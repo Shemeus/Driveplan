@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DrivePlan V4.0 — Agenda • Leerlingen • Leskaart</title>
+
+  <!-- PWA / icoon -->
+  <meta name="theme-color" content="#004080">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icon.png"/>
+
+  <style>
+  :root{
+    --blue:#004080;--bg:#f5f7fa;--card:#fff;--line:#e5e7eb;--muted:#6b7280;
+    --colW:46px; --leftW:480px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111827}
+  .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+
+  /* Sidebar */
+  .sidebar{background:linear-gradient(180deg,var(--blue),#062c57);color:#fff;display:flex;flex-direction:column}
+  .brand{padding:16px 18px;font-weight:900;font-size:1.2rem}
+  .nav{display:flex;flex-direction:column;padding:8px}
+  .nav button{all:unset;cursor:pointer;color:#e6f0ff;padding:10px 14px;border-radius:10px;margin:4px 8px}
+  .nav button.active,.nav button:hover{background:rgba(255,255,255,.14);color:#fff}
+
+  /* Main/cards */
+  .main{padding:16px;max-width:1400px;width:100%}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{border:0;border-radius:10px;padding:9px 12px;cursor:pointer}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:#6b7280}
+  .input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+  .pill{background:rgba(0,64,128,.08);color:#004080;padding:4px 8px;border-radius:999px;font-weight:700;font-size:.8rem}
+  .small{color:#6b7280;font-size:.9rem}
+
+  /* Agenda */
+  .week-wrap{border:1px solid var(--line);border-radius:12px;overflow:auto;background:#fff}
+  .week-head{display:grid;grid-template-columns:100px repeat(7,1fr);border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+  .week-head .hd{padding:8px;text-align:center;font-weight:800;border-right:1px solid var(--line)}
+  .week-body{display:grid;grid-template-columns:100px repeat(7,1fr)}
+  .time-col .time-row{height:28px;border-bottom:1px solid var(--line);font-size:.85rem;color:#6b7280;padding:5px 8px}
+  .day-col{border-right:1px solid var(--line);position:relative}
+  .day-col .day-row{height:28px;border-bottom:1px solid var(--line)}
+  .event{position:absolute;left:6px;right:6px;background:#e9f1ff;border:1px solid #cfe0ff;border-radius:8px;padding:2px 4px;font-size:.85rem;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .event.past{background:#f4f6f8;border-color:#e5e7eb;color:#374151;opacity:.7}
+
+  /* Leerlingen */
+  .list{display:grid;gap:10px}
+  .row{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+  .row h4{margin:0 0 4px}
+  .row .meta{color:#6b7280;font-size:.9rem}
+
+  /* LESKAART */
+  .sheet-wrap{border:1px solid var(--line);border-radius:12px;background:#fff;overflow:auto}
+  .sheet-grid{display:grid;grid-template-columns:var(--leftW) repeat(51, var(--colW))}
+  .sheet-cell{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .header-top{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--line)}
+  .header-row{display:grid;grid-template-columns:var(--leftW) repeat(51, var(--colW))}
+  .left-header{padding:6px 10px;font-weight:800}
+  .col-header{height:58px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;font-weight:800;font-size:.9rem}
+  .col-header small{display:block;font-size:.72rem;color:#6b7280}
+
+  /* Module banden */
+  .mod1{background:#eaf4ff}
+  .mod2{background:#e9f9f0}
+  .mod3{background:#fff7e6}
+  .mod4{background:#ffeef3}
+  .modband{display:grid;grid-template-columns:var(--leftW) repeat(51, var(--colW));position:sticky;z-index:2;border-bottom:1px solid var(--line)}
+  .modband .modcell{padding:6px 10px;font-weight:900;color:#0b376a;border-right:1px solid var(--line);font-size:.95rem}
+
+  .part-row{display:grid;grid-template-columns:var(--leftW) repeat(51, var(--colW))}
+  .part-label{display:flex;gap:8px;align-items:center;padding:6px 10px;font-weight:600;font-size:.95rem}
+  .part-id{color:#6b7280;font-weight:800;width:28px}
+  .cell{display:flex;align-items:center;justify-content:center;height:24px}
+  .score{width:30px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.82rem}
+  .rood{background:#ffe5e5;color:#9b1c1c;border:1px solid #ffc7c7}
+  .oranje{background:#fff0e0;color:#9a4a00;border:1px solid #ffd7b0}
+  .geel{background:#fff9d6;color:#6a5b00;border:1px solid #f5e9a8}
+  .groen{background:#e6f7e9;color:#0f5a1b;border:1px solid #c8eccf}
+  .clickable{cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.05) inset}
+  .locked{opacity:.55}
+
+  /* Modals & Toast/Debug */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:60}
+  .modal{background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);width:560px;max-width:92vw;padding:16px;border:1px solid var(--line)}
+  .modal h3{margin:0 0 10px}
+  .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .modal-actions{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+  .modal-actions-right{display:flex;gap:8px}
+  .toast{position:fixed;right:14px;bottom:14px;background:#2f2f2f;color:#fff;padding:10px 12px;border-radius:10px;opacity:0;transform:translateY(6px);transition:.25s;z-index:100}
+  .toast.show{opacity:1;transform:none}
+  .debug{position:fixed;left:14px;bottom:14px;background:#111827;color:#fff;font-size:.85rem;padding:8px 10px;border-radius:10px;opacity:.9;z-index:100}
+  .danger{background:#8b0000;color:#fff}
+  .switch{display:inline-flex;align-items:center;gap:8px}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">DrivePlan</div>
+    <nav class="nav">
+      <button class="tab-btn active" data-tab="agenda">📅 Agenda</button>
+      <button class="tab-btn" data-tab="learners">🧍 Leerlingen</button>
+      <button class="tab-btn" data-tab="sheet">🧾 Leskaart</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <!-- AGENDA -->
+    <section id="view-agenda">
+      <div class="card">
+        <div class="toolbar" style="justify-content:space-between">
+          <div class="pill" id="weekLabel">Week</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" id="prevWeek">‹ Vorige</button>
+            <button class="btn btn-ghost" id="nextWeek">Volgende ›</button>
+            <button class="btn btn-primary" id="openNewLesson">+ Nieuwe les</button>
+          </div>
+        </div>
+        <div class="week-wrap">
+          <div class="week-head" id="weekHead"></div>
+          <div class="week-body" id="weekBody"></div>
+        </div>
+        <div class="small" style="margin-top:6px">Klik op een lesblok om te bewerken of de leskaart van die leerling te openen.</div>
+      </div>
+    </section>
+
+    <!-- LEERLINGEN -->
+    <section id="view-learners" style="display:none">
+      <div class="card">
+        <div class="toolbar" style="justify-content:space-between">
+          <h3 style="margin:0">Leerlingen</h3>
+          <button class="btn btn-primary" id="openNewLearner">+ Nieuwe leerling</button>
+        </div>
+        <div class="list" id="learnerList"></div>
+      </div>
+    </section>
+
+    <!-- LESKAART -->
+    <section id="view-sheet" style="display:none">
+      <div class="card" style="margin-bottom:10px">
+        <div class="toolbar" style="justify-content:space-between">
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;gap:8px;align-items:center">
+              <h3 style="margin:0">Leskaart</h3>
+              <select class="input" id="sheetLearner"></select>
+            </div>
+            <label class="switch small">
+              <input type="checkbox" id="historicalToggle"/>
+              Historische invoer
+            </label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-ghost" id="btnMod1ToSix">Module 1 ➜ 6</button>
+              <button class="btn btn-ghost" id="btnMod2ToSix">Module 2 ➜ 6</button>
+              <button class="btn btn-ghost" id="btnMod3ToSix">Module 3 ➜ 6</button>
+              <button class="btn btn-ghost" id="btnMods123ToSix">Modules 1–3 ➜ 6</button>
+            </div>
+          </div>
+          <span class="pill" id="sheetStats">Lessen: 0 • Uren: 0</span>
+        </div>
+        <div class="small">Normaal: alleen <strong>laatste</strong> leskolom is klikbaar. Met “Historische invoer” kun je <strong>alle</strong> eerdere lessen invullen of aanpassen.</div>
+      </div>
+      <div class="sheet-wrap" id="sheetWrap">
+        <div id="sheet"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modal: Nieuwe/Bewerk les -->
+<div class="modal-overlay" id="modalLesson">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="nlTitle">Nieuwe les</h3>
+    <div class="modal-row">
+      <div>
+        <label class="small">Leerling</label>
+        <select class="input" id="nlLearner"></select>
+      </div>
+      <div>
+        <label class="small">Datum</label>
+        <input class="input" type="date" id="nlDate"/>
+      </div>
+    </div>
+    <div class="modal-row">
+      <div>
+        <label class="small">Starttijd</label>
+        <select class="input" id="nlTime"></select>
+      </div>
+      <div>
+        <label class="small">Duur</label>
+        <select class="input" id="nlDuration">
+          <option value="50">50 min</option>
+          <option value="100">1 uur 40 min</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost danger" id="nlDelete" style="display:none">Verwijder les</button>
+      <div class="modal-actions-right">
+        <button class="btn btn-ghost" id="nlCancel">Annuleren</button>
+        <button class="btn btn-primary" id="nlSave">Opslaan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Leerling -->
+<div class="modal-overlay" id="modalLearner">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="lrTitle">Leerling</h3>
+    <div class="modal-row">
+      <div>
+        <label class="small">Naam</label>
+        <input class="input" id="lrName" placeholder="Voornaam Achternaam"/>
+      </div>
+      <div>
+        <label class="small">Telefoon</label>
+        <input class="input" id="lrPhone" placeholder="06-..."/>
+      </div>
+    </div>
+    <div class="modal-row">
+      <div>
+        <label class="small">E-mail</label>
+        <input class="input" id="lrEmail" placeholder="naam@voorbeeld.nl"/>
+      </div>
+      <div>
+        <label class="small">Gem. lesduur</label>
+        <select class="input" id="lrAvg">
+          <option value="50">50 min</option>
+          <option value="100">1u40</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <label class="small">Notitie</label>
+      <textarea class="input" id="lrNote" rows="3" placeholder="Opmerkingen/notitie"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="lrCancel">Annuleren</button>
+      <button class="btn btn-primary" id="lrSave">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal score kiezen -->
+<div class="modal-overlay" id="modalScore">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3>Score kiezen</h3>
+    <p class="small">Kies een cijfer voor dit onderdeel.</p>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-primary score-choice" data-score="3">3</button>
+      <button class="btn btn-primary score-choice" data-score="4">4</button>
+      <button class="btn btn-primary score-choice" data-score="5">5</button>
+      <button class="btn btn-primary score-choice" data-score="6">6</button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-ghost" id="scoreCancel">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Opgeslagen</div>
+<div class="debug" id="debug">Start…</div>
+
+<script>
+/* ===== Helpers ===== */
+function $(s){return document.querySelector(s)}
+function $all(s){return Array.prototype.slice.call(document.querySelectorAll(s))}
+var store={
+  read:function(k,f){try{var v=localStorage.getItem(k);return v?JSON.parse(v):f}catch(e){return f}},
+  write:function(k,v){localStorage.setItem(k,JSON.stringify(v))}
+};
+function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function pad2(n){return (n<10?'0':'')+n}
+function isoToday(){var n=new Date();return n.getFullYear()+'-'+pad2(n.getMonth()+1)+'-'+pad2(n.getDate())}
+function addDays(d,n){var r=new Date(d);r.setDate(r.getDate()+n);return r}
+function isoFromDateLocal(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())}
+function fmtHead(d){try{return d.toLocaleDateString('nl-NL',{weekday:'short',day:'2-digit',month:'2-digit'})}catch(e){return d.getDate()+'-'+(d.getMonth()+1)}}
+function toast(msg){var t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1300)}
+function dbg(msg){var b=$('#debug'); if(b){ b.textContent=msg; }}
+function cellClass(s){return s===3?'rood':s===4?'oranje':s===5?'geel':s===6?'groen':''}
+
+/* ===== Data ===== */
+var K={learners:'dp40_learners',lessons:'dp40_lessons',progress:'dp40_progress',sel:'dp40_sel', hist:'dp40_hist'};
+var learners=store.read(K.learners,[
+  {id:uid(),name:'Pieter Jansen',phone:'06-12345678',email:'pieter@example.com',avgMinutes:100,note:''},
+  {id:uid(),name:'Maartje Visser',phone:'06-87654321',email:'maartje@example.com',avgMinutes:100,note:''}
+]);
+var lessons=store.read(K.lessons,[]);
+var progress=store.read(K.progress,{}); // {lid:{partId:{[date]:score}}}
+var selectedLearnerId=store.read(K.sel, (learners.length?learners[0].id:''));
+var historicalMode = !!store.read(K.hist,false);
+
+/* Unieke datums per leerling (agenda → leskaart) */
+function datesAscForLearner(lid){
+  var arr=lessons.filter(function(ev){
+    var l=learners.find(function(x){return x.id===lid});
+    return l && ev.learner===l.name;
+  }).map(function(ev){return ev.date});
+  var uniq={}; arr.forEach(function(d){uniq[d]=true});
+  return Object.keys(uniq).sort();
+}
+
+/* ===== Agenda ===== */
+var slots=(function(){
+  var a=[],h=8,m=0;
+  while(h<21||(h===21&&m<=30)){
+    a.push(pad2(h)+':'+pad2(m));
+    m+=10;if(m===60){m=0;h++;}
+  }
+  return a;
+})();
+var weekStart=(function(){
+  var d=new Date();var dow=(d.getDay()||7)-1;
+  d.setDate(d.getDate()-dow);d.setHours(0,0,0,0);
+  return d;
+})();
+var todayISO=isoToday();
+
+function renderWeek(){
+  var days=[0,1,2,3,4,5,6].map(function(i){return addDays(weekStart,i)});
+  $('#weekHead').innerHTML='<div></div>'+days.map(function(d){return '<div class="hd">'+fmtHead(d)+'</div>'}).join('');
+  var body='<div class="time-col">';
+  slots.forEach(function(t){body+='<div class="time-row">'+t+'</div>'});
+  body+='</div>';
+  days.forEach(function(d){
+    var iso=isoFromDateLocal(d);
+    body+='<div class="day-col" data-date="'+iso+'">';
+    slots.forEach(function(){body+='<div class="day-row"></div>'});
+    body+='</div>';
+  });
+  $('#weekBody').innerHTML=body;
+
+  var rowH=28;
+  var startISO=isoFromDateLocal(days[0]), endISO=isoFromDateLocal(days[6]);
+  var inWeek=lessons.filter(function(l){return l.date>=startISO && l.date<=endISO});
+  var cols=$all('.day-col'); var colMap={};
+  cols.forEach(function(el){colMap[el.getAttribute('data-date')]=el});
+
+  inWeek.forEach(function(ev){
+    var col=colMap[ev.date]; if(!col) return;
+    var idx=slots.indexOf(ev.time||''); if(idx<0) return;
+    var rows=Math.max(1,Math.ceil((ev.duration||50)/10));
+    var el=document.createElement('div');
+    el.className='event';
+    if(ev.date < todayISO){ el.className+=' past'; }
+    el.style.top=(idx*rowH)+'px';
+    el.style.height=(rows*rowH-4)+'px';
+    el.textContent=ev.time+' '+ev.learner;
+    el.title=ev.learner+' — '+(ev.duration||50)+' min';
+    el.onclick=function(){ openLessonModal(ev.id); };
+    col.appendChild(el);
+  });
+
+  $('#weekLabel').textContent=fmtHead(days[0])+' – '+fmtHead(days[6]);
+}
+function buildTimeOptions(){
+  return slots.map(function(t){return '<option value="'+t+'">'+t+'</option>'}).join('');
+}
+function suggestNextTime(){
+  var n=new Date(),h=n.getHours(),m=Math.ceil(n.getMinutes()/10)*10;
+  if(m===60){m=0;h++}
+  if(h<8){h=9;m=0}
+  if(h>21||(h===21&&m>30)){h=9;m=0}
+  return pad2(h)+':'+pad2(m);
+}
+
+/* ===== Les toevoegen/bewerken ===== */
+var modalLesson=$('#modalLesson'),
+    nlLearner=$('#nlLearner'),
+    nlDate=$('#nlDate'),
+    nlTime=$('#nlTime'),
+    nlDuration=$('#nlDuration'),
+    nlDelete=$('#nlDelete'),
+    nlTitle=$('#nlTitle');
+var editLessonId=null;
+
+function rebuildLearnerOptions(){
+  nlLearner.innerHTML=learners.map(function(l){
+    return '<option value="'+l.id+'">'+l.name+'</option>';
+  }).join('');
+  var keep=$('#sheetLearner').value;
+  $('#sheetLearner').innerHTML=learners.map(function(l){
+    return '<option value="'+l.id+'">'+l.name+'</option>';
+  }).join('');
+  if(learners.some(function(l){return l.id===selectedLearnerId})){
+    $('#sheetLearner').value=selectedLearnerId;
+  }else if(learners.some(function(l){return l.id===keep})){
+    $('#sheetLearner').value=keep;
+  }
+  $('#historicalToggle').checked=!!historicalMode;
+}
+
+function openLessonModal(id){
+  rebuildLearnerOptions();
+  nlTime.innerHTML=buildTimeOptions();
+  if(id){
+    var ev=lessons.find(function(x){return x.id===id}); if(!ev) return;
+    var l=learners.find(function(x){return x.name===ev.learner});
+    nlTitle.textContent='Les bewerken';
+    nlDelete.style.display='inline-block';
+    editLessonId=id;
+    nlLearner.value=l?l.id:(learners[0]?learners[0].id:'');
+    nlDate.value=ev.date;
+    nlTime.value=ev.time;
+    nlDuration.value=String(ev.duration||50);
+  }else{
+    nlTitle.textContent='Nieuwe les';
+    nlDelete.style.display='none';
+    editLessonId=null;
+    if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId})) nlLearner.value=selectedLearnerId;
+    nlDate.value=isoToday();
+    nlTime.value=suggestNextTime();
+    nlDuration.value="50";
+  }
+  modalLesson.style.display='flex';
+}
+function closeLessonModal(){modalLesson.style.display='none'}
+
+function saveNewOrEditLesson(){
+  var lid=nlLearner.value;
+  var student=learners.find(function(l){return l.id===lid});
+  if(!student){alert('Geen leerling geselecteerd');return;}
+  var iso=nlDate.value;
+  var time=nlTime.value;
+  var duration=parseInt(nlDuration.value,10)||50;
+  var parts=(time||'').split(':'),sh=parseInt(parts[0]||'0',10),sm=parseInt(parts[1]||'0',10);
+  var s=sh*60+sm,e=s+duration;
+
+  var overlap=lessons.some(function(ev){
+    if(editLessonId && ev.id===editLessonId) return false;
+    if(ev.date!==iso) return false;
+    if(ev.learner!==student.name) return false;
+    var ps=(ev.time||'').split(':'),eh=parseInt(ps[0]||'0',10),em=parseInt(ps[1]||'0',10);
+    var st=eh*60+em,en=st+(ev.duration||50);
+    return s<en && e>st;
+  });
+  if(overlap){alert('⚠️ Overlapt met bestaande les van deze leerling.');return;}
+
+  if(editLessonId){
+    var i=lessons.findIndex(function(x){return x.id===editLessonId});
+    if(i>=0){
+      lessons[i]={id:lessons[i].id,date:iso,time:time,duration:duration,learner:student.name};
+    }
+    toast('Les bijgewerkt');
+  }else{
+    lessons.push({id:uid(),date:iso,time:time,duration:duration,learner:student.name});
+    toast('Les toegevoegd');
+  }
+  store.write(K.lessons,lessons);
+  renderWeek();
+  renderSheet();
+  closeLessonModal();
+}
+function deleteLesson(){
+  if(!editLessonId) return;
+  if(!confirm('Les verwijderen?')) return;
+  lessons=lessons.filter(function(x){return x.id!==editLessonId});
+  store.write(K.lessons,lessons);
+  renderWeek();
+  renderSheet();
+  closeLessonModal();
+  toast('Les verwijderd');
+}
+
+/* ===== Leerlingenbeheer ===== */
+function renderLearners(){
+  var list=$('#learnerList');
+  if(!learners.length){
+    list.innerHTML='<div class="small">Nog geen leerlingen.</div>';
+    return;
+  }
+  list.innerHTML=learners.map(function(l){
+    var avg=(typeof l.avgMinutes==='number')?l.avgMinutes:(l.avg||100);
+    return '<div class="row">'+
+      '<div><h4>'+l.name+'</h4>'+
+      '<div class="meta">📞 '+(l.phone||'-')+' • ✉️ '+(l.email||'-')+' • Gem.: '+avg+' min</div>'+
+      (l.note?'<div class="small" style="margin-top:4px">'+l.note+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn btn-ghost" onclick="editLearner(\''+l.id+'\')">Bewerken</button>'+
+        '<button class="btn btn-ghost" onclick="deleteLearner(\''+l.id+'\')">Verwijderen</button>'+
+        '<button class="btn btn-primary" onclick="openSheetFor(\''+l.id+'\')">Leskaart</button>'+
+      '</div></div>';
+  }).join('');
+}
+function openSheetFor(id){
+  selectedLearnerId=id;
+  store.write(K.sel,selectedLearnerId);
+  switchTab('sheet');
+}
+function deleteLearner(id){
+  if(!confirm('Leerling verwijderen? Bijbehorende lessen en voortgang worden ook verwijderd.')) return;
+  var l=learners.find(function(x){return x.id===id}); if(!l) return;
+  lessons=lessons.filter(function(ev){return ev.learner!==l.name});
+  store.write(K.lessons,lessons);
+  delete progress[id];
+  learners=learners.filter(function(x){return x.id!==id});
+  store.write(K.learners,learners);
+  if(selectedLearnerId===id) selectedLearnerId=learners.length?learners[0].id:'';
+  renderLearners();
+  renderWeek();
+  renderSheet();
+  toast('Leerling verwijderd');
+}
+
+/* Modal leerling */
+var modalLearner=$('#modalLearner'),
+    lrName=$('#lrName'),
+    lrPhone=$('#lrPhone'),
+    lrEmail=$('#lrEmail'),
+    lrAvg=$('#lrAvg'),
+    lrNote=$('#lrNote');
+var editId=null;
+
+function openLearnerModal(l){
+  editId=(l&&l.id)?l.id:null;
+  $('#lrTitle').textContent=editId?'Leerling bewerken':'Nieuwe leerling';
+  lrName.value=(l&&l.name)?l.name:'';
+  lrPhone.value=(l&&l.phone)?l.phone:'';
+  lrEmail.value=(l&&l.email)?l.email:'';
+  lrAvg.value=String((l&&typeof l.avgMinutes==='number')?l.avgMinutes:((l&&l.avg)?l.avg:100));
+  lrNote.value=(l&&l.note)?l.note:'';
+  modalLearner.style.display='flex';
+}
+function closeLearnerModal(){modalLearner.style.display='none'}
+
+function saveLearner(){
+  var name=lrName.value.trim();
+  if(!name){alert('Naam is verplicht');return;}
+  var phone=lrPhone.value.trim();
+  var email=lrEmail.value.trim();
+  var avg=parseInt(lrAvg.value,10)||100;
+  var note=lrNote.value.trim();
+  var validEmail=!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  var validPhone=!phone || /^[0-9+\-\s()]{6,}$/.test(phone);
+  if(!validPhone){alert('Ongeldig telefoonnummer');return;}
+  if(!validEmail){alert('Ongeldig e-mailadres');return;}
+  var exists=learners.some(function(l){return l.name.toLowerCase()===name.toLowerCase() && l.id!==editId});
+  if(exists){alert('Er bestaat al een leerling met deze naam.');return;}
+
+  var obj={id:editId||uid(),name:name,phone:phone,email:email,avgMinutes:avg,note:note};
+  if(editId){
+    var i=learners.findIndex(function(l){return l.id===editId});
+    var oldName=learners[i].name;
+    learners[i]=obj;
+    if(oldName!==obj.name){
+      lessons=lessons.map(function(ev){
+        return ev.learner===oldName
+          ? {id:ev.id,date:ev.date,time:ev.time,duration:ev.duration,learner:obj.name}
+          : ev;
+      });
+      store.write(K.lessons,lessons);
+    }
+  }else{
+    learners.push(obj);
+  }
+  store.write(K.learners,learners);
+  if(!selectedLearnerId && obj.id) selectedLearnerId=obj.id;
+  closeLearnerModal();
+  renderLearners();
+  rebuildLearnerOptions();
+  renderSheet();
+  toast(editId?'Leerling bijgewerkt':'Leerling toegevoegd');
+}
+function editLearner(id){
+  var l=learners.find(function(x){return x.id===id});
+  if(!l){alert('Leerling niet gevonden');return;}
+  openLearnerModal(l);
+}
+
+/* ===== Leskaart data ===== */
+var PARTS=[
+{id:1,m:1,t:'Controle buiten de auto / in- en uitstappen'},
+{id:2,m:1,t:'Zithouding / stuurhouding / spiegels afstellen'},
+{id:3,m:1,t:'Controle in de auto / starten & afzetten motor'},
+{id:4,m:1,t:'Stuur-oefeningen / kijktechniek'},
+{id:5,m:1,t:'Ontkoppelen / koppelen / wegrijden'},
+{id:6,m:1,t:'Stoppen'},
+{id:7,m:1,t:'Opschakelen'},
+{id:8,m:1,t:'Terugschakelen & afremtechniek'},
+{id:9,m:1,t:'Gasdosering / snelheidsregeling'},
+
+{id:10,m:2,t:'Veilig en technisch wegrijden / stoppen'},
+{id:11,m:2,t:'Plaats op de weg / rijstrook'},
+{id:12,m:2,t:'Tegemoetkomen en ingehaald worden'},
+{id:13,m:2,t:'Kruispunten — gelijkwaardig'},
+{id:14,m:2,t:'Kruispunten — voorrang'},
+{id:15,m:2,t:'Kruispunten — complex'},
+{id:16,m:2,t:'Richting veranderen — rechts'},
+{id:17,m:2,t:'Richting veranderen — links'},
+{id:18,m:2,t:'Rotondes 1/4'},
+{id:19,m:2,t:'Rotondes 2/4'},
+{id:20,m:2,t:'Rotondes 3/4'},
+{id:21,m:2,t:'Rotondes 4/4'},
+
+{id:22,m:3,t:'Rijstrook wisselen / zijdelings verplaatsen'},
+{id:23,m:3,t:'Inhalen en voorbijgaan'},
+{id:24,m:3,t:'Invoegen'},
+{id:25,m:3,t:'Uitrijden'},
+{id:26,m:3,t:'Bewust kijken'},
+{id:27,m:3,t:'Volgafstand / ruimtekussen'},
+{id:28,m:3,t:'Navigatie'},
+
+{id:29,m:4,t:'Hellingproef'},
+{id:30,m:4,t:'Achteruit rijden — rechte lijn'},
+{id:31,m:4,t:'Achteruit rijden — bocht'},
+{id:32,m:4,t:'Keren — steken'},
+{id:33,m:4,t:'Keren — halve draai'},
+{id:34,m:4,t:'Parkeren file — voorwaarts links'},
+{id:35,m:4,t:'Parkeren file — voorwaarts rechts'},
+{id:36,m:4,t:'Parkeren file — achterwaarts rechts'},
+{id:37,m:4,t:'Parkeren haaks — voorwaarts links'},
+{id:38,m:4,t:'Parkeren haaks — voorwaarts rechts'},
+{id:39,m:4,t:'Parkeren schuin — voorwaarts links'},
+{id:40,m:4,t:'Parkeren schuin — voorwaarts rechts'},
+{id:41,m:4,t:'Parkeren — achterwaarts haaks/schuin rechts'}
+];
+
+var MODULES=[
+  {id:1,label:'Module 1 — Techniek van de auto',range:[1,9], cls:'mod1'},
+  {id:2,label:'Module 2 — Bedrevenheid & kijktechniek',range:[10,21], cls:'mod2'},
+  {id:3,label:'Module 3 — Informatieverwerking & verkeersinzicht',range:[22,28], cls:'mod3'},
+  {id:4,label:'Module 4 — Bijzondere verrichtingen',range:[29,41], cls:'mod4'}
+];
+
+function scoreGet(lid,pid,date){
+  return (progress[lid] && progress[lid][pid] && (date in progress[lid][pid]))
+    ? progress[lid][pid][date]
+    : null;
+}
+function scoreSet(lid,pid,date,val){
+  if(!progress[lid]) progress[lid]={};
+  if(!progress[lid][pid]) progress[lid][pid]={};
+  progress[lid][pid][date]=val;
+  store.write(K.progress,progress);
+}
+
+/* Modules op 6 zetten in laatste les */
+function moduleParts(moduleId){
+  return PARTS.filter(function(p){return p.m===moduleId;});
+}
+function setModuleToSix(moduleId){
+  var lid=selectedLearnerId;
+  if(!lid){alert('Kies eerst een leerling op de leskaart.');return;}
+  var learnerObj=learners.find(function(l){return l.id===lid;});
+  if(!learnerObj){alert('Leerling niet gevonden.');return;}
+
+  var datesAsc=datesAscForLearner(lid);
+  if(!datesAsc.length){
+    alert('Er zijn nog geen lessen voor deze leerling in de agenda.');
+    return;
+  }
+  var latestDate=datesAsc[datesAsc.length-1];
+  var mod=MODULES.find(function(m){return m.id===moduleId;});
+  if(!mod) return;
+
+  if(!confirm('Alle onderdelen van '+mod.label+' voor '+learnerObj.name+' op 6 zetten in de meest recente les ('+latestDate+')?')) return;
+
+  moduleParts(moduleId).forEach(function(p){
+    scoreSet(lid,p.id,latestDate,6);
+  });
+  renderSheet();
+  toast('Module '+moduleId+' afgerond in les '+latestDate);
+}
+function setModules123ToSix(){
+  var lid=selectedLearnerId;
+  if(!lid){alert('Kies eerst een leerling op de leskaart.');return;}
+  var learnerObj=learners.find(function(l){return l.id===lid;});
+  if(!learnerObj){alert('Leerling niet gevonden.');return;}
+
+  var datesAsc=datesAscForLearner(lid);
+  if(!datesAsc.length){
+    alert('Er zijn nog geen lessen voor deze leerling in de agenda.');
+    return;
+  }
+  var latestDate=datesAsc[datesAsc.length-1];
+
+  if(!confirm('Alle onderdelen van modules 1 t/m 3 voor '+learnerObj.name+' op 6 zetten in de meest recente les ('+latestDate+')?')) return;
+
+  PARTS.forEach(function(p){
+    if(p.m===1 || p.m===2 || p.m===3){
+      scoreSet(lid,p.id,latestDate,6);
+    }
+  });
+  renderSheet();
+  toast('Modules 1–3 afgerond in les '+latestDate);
+}
+
+/* ===== Score popup ===== */
+var modalScore = $('#modalScore');
+var currentScoreCtx = null; // {lid, pid, date, el}
+
+function openScoreModal(ctx){
+  currentScoreCtx = ctx;
+  modalScore.style.display = 'flex';
+}
+function closeScoreModal(){
+  modalScore.style.display = 'none';
+  currentScoreCtx = null;
+}
+
+/* ===== Leskaart renderen ===== */
+function renderSheet(){
+  var previous = $('#sheetLearner').value || selectedLearnerId || '';
+
+  $('#sheetLearner').innerHTML = learners.map(function(l){
+    return '<option value="'+l.id+'">'+l.name+'</option>';
+  }).join('');
+
+  var lid='';
+  if(previous && learners.some(function(l){return l.id===previous;})){
+    lid=previous;
+  }else if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId;})){
+    lid=selectedLearnerId;
+  }else if(learners.length){
+    lid=learners[0].id;
+  }else{
+    lid='';
+  }
+
+  if(lid){
+    $('#sheetLearner').value=lid;
+  }
+  selectedLearnerId=lid;
+  store.write(K.sel,lid);
+
+  var learnerObj=learners.find(function(l){return l.id===lid});
+  var avg=learnerObj ? (typeof learnerObj.avgMinutes==='number'?learnerObj.avgMinutes:(learnerObj.avg||100)) : 100;
+  var datesAsc=datesAscForLearner(lid);
+  var total=datesAsc.length;
+  var hours=Math.round(((avg*total)/60)*10)/10;
+  $('#sheetStats').textContent='Lessen: '+total+' • Uren: '+hours;
+
+  var datesDisplay = datesAsc.slice(-51).reverse(); // nieuwste links
+
+  var el=$('#sheet'), html='';
+  html+='<div class="header-top"><div class="header-row"><div class="left-header">Onderdeel</div>';
+  for(var i=0;i<51;i++){
+    var d = datesDisplay[i] || '';
+    var label = d
+      ? '<div>Les '+(datesAsc.indexOf(d)+1)+'<small>'+d+'</small></div>'
+      : '<div>—<small>&nbsp;</small></div>';
+    html+='<div class="col-header">'+label+'</div>';
+  }
+  html+='</div></div>';
+
+  html+='<div class="sheet-grid">';
+  for(var mi=0;mi<MODULES.length;mi++){
+    var m=MODULES[mi];
+    html+='<div class="modband '+m.cls+'" style="grid-column:1 / -1; position:sticky; top:58px;">';
+    html+='<div class="modcell">'+m.label+' <span style="color:#6b7280;font-weight:600;margin-left:6px">(Onderdelen '+m.range[0]+'–'+m.range[1]+')</span></div>';
+    for(i=0;i<51;i++){ html+='<div class="sheet-cell '+m.cls+'"></div>'; }
+    html+='</div>';
+
+    var parts=PARTS.filter(function(p){return p.id>=m.range[0] && p.id<=m.range[1]});
+    parts.forEach(function(p){
+      html+='<div class="sheet-cell part-label"><span class="part-id">'+p.id+'.</span> '+p.t+'</div>';
+      for(i=0;i<51;i++){
+        var date=datesDisplay[i]||'';
+        var s=date?scoreGet(lid,p.id,date):null;
+        var clickable=!!date && (historicalMode || i===0);
+        html+='<div class="sheet-cell"><div class="score '
+          +(s?cellClass(s):'')
+          +(clickable?' clickable':' locked')
+          +'" data-date="'+date+'" data-part="'+p.id+'" '
+          +(clickable?'':'data-locked="1"')
+          +'>'
+          +(s!==null?s:'')
+          +'</div></div>';
+      }
+    });
+  }
+  html+='</div>';
+  el.innerHTML=html;
+
+  $all('#sheet .score').forEach(function(sc){
+    sc.onclick=function(){
+      if(sc.getAttribute('data-locked')==='1') return;
+      var date=sc.getAttribute('data-date'); if(!date) return;
+      var pid=parseInt(sc.getAttribute('data-part'),10);
+      openScoreModal({lid:lid,pid:pid,date:date,el:sc});
+    };
+  });
+
+  var wrap=$('#sheetWrap');
+  wrap.scrollLeft=0;
+}
+
+$('#sheetLearner').addEventListener('change', renderSheet);
+$('#historicalToggle').addEventListener('change',function(){
+  historicalMode=this.checked;
+  store.write(K.hist,historicalMode);
+  renderSheet();
+});
+
+/* ===== Tabs ===== */
+var views={
+  agenda:$('#view-agenda'),
+  learners:$('#view-learners'),
+  sheet:$('#view-sheet')
+};
+function switchTab(name){
+  for(var k in views){
+    if(views.hasOwnProperty(k)){
+      views[k].style.display=(k===name)?'block':'none';
+    }
+  }
+  $all('.tab-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-tab')===name);
+  });
+  if(name==='agenda') renderWeek();
+  if(name==='learners') renderLearners();
+  if(name==='sheet') renderSheet();
+}
+
+/* ===== Week navigatie ===== */
+$('#prevWeek').addEventListener('click',function(){
+  weekStart=addDays(weekStart,-7);
+  renderWeek();
+});
+$('#nextWeek').addEventListener('click',function(){
+  weekStart=addDays(weekStart,7);
+  renderWeek();
+});
+
+/* ===== INIT ===== */
+(function initWhenReady(){
+  function ready(fn){
+    if(document.readyState==='loading'){
+      document.addEventListener('DOMContentLoaded',fn,{once:true});
+    }else{
+      fn();
+    }
+  }
+  ready(function(){
+    try{
+      $all('.tab-btn').forEach(function(b){
+        b.addEventListener('click',function(){
+          switchTab(b.getAttribute('data-tab'));
+        });
+      });
+
+      $('#openNewLesson').onclick=function(){openLessonModal(null);};
+      $('#nlCancel').onclick=closeLessonModal;
+      $('#nlSave').onclick=saveNewOrEditLesson;
+      $('#nlDelete').onclick=deleteLesson;
+      $('#modalLesson').addEventListener('click',function(e){
+        if(e.target===modalLesson) closeLessonModal();
+      });
+
+      $('#openNewLearner').onclick=function(){openLearnerModal(null);};
+      $('#lrCancel').onclick=closeLearnerModal;
+      $('#lrSave').onclick=saveLearner;
+      $('#modalLearner').addEventListener('click',function(e){
+        if(e.target===modalLearner) closeLearnerModal();
+      });
+
+      // module 1–3 knoppen
+      $('#btnMod1ToSix').addEventListener('click',function(){setModuleToSix(1);});
+      $('#btnMod2ToSix').addEventListener('click',function(){setModuleToSix(2);});
+      $('#btnMod3ToSix').addEventListener('click',function(){setModuleToSix(3);});
+      $('#btnMods123ToSix').addEventListener('click',setModules123ToSix);
+
+      // score-modal knoppen
+      $all('.score-choice').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          var val=parseInt(btn.getAttribute('data-score'),10);
+          if(currentScoreCtx && currentScoreCtx.lid && currentScoreCtx.date){
+            scoreSet(currentScoreCtx.lid,currentScoreCtx.pid,currentScoreCtx.date,val);
+            var el=currentScoreCtx.el;
+            el.className='score '+cellClass(val)+' clickable';
+            el.textContent=val;
+            toast('Opgeslagen');
+          }
+          closeScoreModal();
+        });
+      });
+      $('#scoreCancel').addEventListener('click',function(){
+        closeScoreModal();
+      });
+      $('#modalScore').addEventListener('click',function(e){
+        if(e.target===modalScore) closeScoreModal();
+      });
+
+      $('#historicalToggle').checked=!!historicalMode;
+
+      switchTab('agenda');
+      dbg('✅ App geladen');
+    }catch(e){
+      console.error(e);
+      dbg('❌ Fout bij opstarten: '+e.message);
+      toast('Fout: '+e.message);
+    }
+  });
+
+  window.addEventListener('error',function(ev){
+    var msg='JS-error: '+(ev.error && ev.error.message ? ev.error.message : ev.message || 'onbekend');
+    dbg('❌ '+msg);
+    toast(msg);
+  });
+})();
+
+/* Expose voor inline onclick */
+window.editLearner=editLearner;
+window.deleteLearner=deleteLearner;
+window.openSheetFor=openSheetFor;
+
+/* Heel simpele service worker-registratie (maakt niets stuk) */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(err){
+      console.log('ServiceWorker fout:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
