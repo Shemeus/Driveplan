@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>DrivePlan — Agenda • Leerlingen • Leskaart • Modulebeheer • Instellingen</title>
+<link href="./manifest.webmanifest" rel="manifest"/>
+<meta content="#004080" name="theme-color"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="default" name="apple-mobile-web-app-status-bar-style"/>
+<meta content="DrivePlan" name="apple-mobile-web-app-title"/>
+<link href="./icons/icon-192.png" rel="apple-touch-icon"/>
+<link href="css/app.css" rel="stylesheet"/>
+
+</head>
+<body>
+
+<div id="appShell">
+<div class="app">
+<aside class="sidebar">
+<div class="brand brand-app" id="brandBox"><button class="btn btn-ghost mobile-menu-btn" id="sidebarMobileMenuBtn" type="button" onclick="return dpMobileMenuClose(event)">☰</button><img alt="Logo" id="brandLogo" style="display:none"/><div class="brand-meta"><span id="brandName">DrivePlan</span><span class="brand-tag" id="brandTagline">rijschool planner</span></div></div>
+<nav class="nav">
+<button class="tab-btn active" data-tab="agenda" onclick="return dpMobileGo('agenda', event)">📅 Agenda</button>
+<button class="tab-btn" data-tab="learners" onclick="return dpMobileGo('learners', event)">🧍 Leerlingen</button>
+<button class="tab-btn" data-tab="sheet" onclick="return dpMobileGo('sheet', event)">🧾 Leskaart</button>
+<button class="tab-btn" data-tab="modules" onclick="return dpMobileGo('modules', event)">⚙️ Modulebeheer</button>
+<button class="tab-btn" data-tab="settings" onclick="return dpMobileGo('settings', event)">⚙️ Instellingen</button>
+
+</nav>
+</aside>
+<div class="mobile-nav-backdrop" id="mobileNavBackdrop" onclick="return dpMobileMenuClose(event)"></div>
+<div class="mobile-topbar" id="mobileTopbar"><button class="btn btn-ghost" id="mobileMenuBtn" type="button" onclick="return dpMobileMenuToggle(event)">☰</button><div class="mobile-topbar-title">DrivePlan</div></div>
+<main class="main">
+<section class="card hero-card" id="appHero">
+<div class="hero-left">
+<div class="hero-logo-wrap">
+<img alt="Logo" id="heroLogo"/>
+<div class="hero-badge" id="heroBadge">DP</div>
+</div>
+<div class="hero-copy">
+<div class="hero-title" id="heroTitle">DrivePlan</div>
+<div class="hero-sub" id="heroSubtitle">Jouw planning, leerlingen en leskaart op één plek</div>
+</div>
+</div>
+<div class="hero-right">
+<section aria-label="Snelnummers" class="contact-strip header-contact-strip" id="contactStrip">
+<div class="contact-chip" id="quickChip1">
+<div class="contact-chip-main">
+<div class="contact-chip-label" id="quickLabel1">Rijschool</div>
+<div class="contact-chip-value" id="quickValue1">Niet ingesteld</div>
+</div>
+<div class="contact-chip-actions">
+<button aria-label="Bel snelnummer 1" class="contact-mini" id="quickCall1" type="button">📞</button>
+</div>
+</div>
+<div class="contact-chip" id="quickChip2">
+<div class="contact-chip-main">
+<div class="contact-chip-label" id="quickLabel2">ANWB</div>
+<div class="contact-chip-value" id="quickValue2">Niet ingesteld</div>
+</div>
+<div class="contact-chip-actions">
+<button aria-label="Bel snelnummer 2" class="contact-mini" id="quickCall2" type="button">📞</button>
+</div>
+</div>
+<div class="contact-chip" id="quickChip3">
+<div class="contact-chip-main">
+<div class="contact-chip-label" id="quickLabel3">Partner</div>
+<div class="contact-chip-value" id="quickValue3">Niet ingesteld</div>
+</div>
+<div class="contact-chip-actions">
+<button aria-label="Bel snelnummer 3" class="contact-mini" id="quickCall3" type="button">📞</button>
+</div>
+</div>
+</section>
+</div>
+</section>
+<!-- AGENDA -->
+<section id="view-agenda">
+<div class="card">
+<div class="toolbar" style="justify-content:space-between">
+<button class="pill" id="weekLabel" style="border:0;cursor:pointer">Week</button>
+<div style="display:flex;gap:8px">
+<button class="btn btn-ghost" id="prevWeek">‹ Vorige</button>
+<button class="btn btn-ghost" id="nextWeek">Volgende ›</button>
+<button class="btn btn-primary" id="openNewLesson">+ Nieuwe</button>
+</div>
+</div>
+<div class="card" style="margin-top:12px">
+<div class="toolbar" style="justify-content:space-between">
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+<span class="pill">Vandaag</span>
+<span class="small" id="dpTodayLabelToolbar"></span>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+<span class="pill">Morgen</span>
+<span class="small" id="dpTomorrowLabelToolbar"></span>
+</div>
+<button class="btn btn-ghost" id="dpDayToggle" type="button" onclick="return toggleDaylists(event)">Inklappen</button><button class="btn btn-ghost" id="dpWeekToggle" type="button" onclick="return toggleMobileWeekAgenda(event)">📅 Weekagenda tonen</button>
+</div>
+<div class="dp-daylists" id="dpDaylistsWrap">
+<div class="dp-daycol today-col">
+<div class="dp-dayheader today-head">🟢 VANDAAG <span id="dpTodayLabelCard"></span></div>
+<div class="dp-daylist" id="dpTodayList"></div>
+</div>
+<div class="dp-daycol tomorrow-col">
+<div class="dp-dayheader tomorrow-head">🔵 MORGEN <span id="dpTomorrowLabelCard"></span></div>
+<div class="dp-daylist" id="dpTomorrowList"></div>
+</div>
+</div>
+</div>
+<div class="week-wrap">
+<div class="week-head" id="weekHead"></div>
+<div class="week-body" id="weekBody"></div>
+</div>
+<div class="small" style="margin-top:6px">Rijles = blauw • Examen = rood • Proefles = groen • Privé = donker oranje. Klik op een blok om te bewerken.</div>
+</div>
+</section>
+<!-- LEERLINGEN -->
+<section id="view-learners" style="display:none">
+<div class="card">
+<div class="toolbar" style="justify-content:space-between">
+<h3 style="margin:0">Leerlingen</h3>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-ghost" id="btnExport">Backup downloaden</button>
+<label class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:8px">
+              Backup terugzetten
+              <input accept="application/json" id="btnImport" style="display:none" type="file"/>
+</label>
+<button class="btn btn-primary" id="openNewLearner">+ Nieuwe leerling</button>
+</div>
+</div>
+<div style="margin-top:10px">
+<input autocomplete="off" class="input" id="learnerSearch" placeholder="Zoek leerling...">
+<div class="small" style="margin-top:6px">Tik op een leerling → direct naar leskaart. Gebruik “Bewerken” rechts om gegevens te wijzigen.</div>
+</input></div>
+<div class="list" id="learnerList" style="margin-top:10px"></div>
+</div>
+</section>
+<!-- LESKAART -->
+<section id="view-sheet" style="display:none">
+<div class="card" style="margin-bottom:10px">
+<div class="toolbar" style="justify-content:space-between">
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;gap:8px;align-items:center">
+<h3 style="margin:0">Leskaart</h3>
+<select class="input" id="sheetLearner"></select>
+</div>
+<label class="switch small">
+<input id="historicalToggle" type="checkbox"/>
+              Historische invoer
+            </label>
+</div>
+<div class="sheet-quick-actions"><button class="btn btn-ghost" id="sheetPdfDownload">⬇️ PDF</button><button class="btn btn-ghost" id="sheetPdfShare">📤 Delen</button><button class="btn btn-ghost" id="sheetMail">✉️ Mail</button><button class="btn btn-ghost" id="sheetNav">📍 Navigatie</button><button class="btn btn-ghost" id="sheetCall">📞 Bellen</button></div>
+<span class="pill" id="sheetStats">Lessen: 0 • Uren: 0</span>
+</div>
+<div class="small" id="moduleProgressLine" style="margin-top:6px"></div>
+<div class="small">Klik op een vakje → kies score (1–8). Standaard sluit de popup direct. Wil je een hele module/les vullen? Zet “Popup sluiten na kiezen” uit.</div>
+</div>
+<div class="sheet-wrap" id="sheetWrap">
+<div id="sheet"></div>
+</div>
+</section>
+<!-- FACTUREN -->
+<section id="view-invoices" style="display:none !important">
+<div class="card">
+<div class="toolbar" style="justify-content:space-between">
+<h3 style="margin:0">Financiën</h3>
+</div>
+<div class="small" style="margin-top:6px">Hier beheer je facturen, producten en btw.</div>
+<div class="finance-subtabs" style="margin-top:12px">
+<button class="btn btn-ghost finance-tabbtn active" id="finTabNewBtn" type="button">Nieuw</button>
+<button class="btn btn-ghost finance-tabbtn" id="finTabListBtn" type="button">Facturen</button>
+<button class="btn btn-ghost finance-tabbtn" id="finTabProductsBtn" type="button">Producten</button>
+<button class="btn btn-ghost finance-tabbtn" id="finTabVatBtn" type="button">BTW</button>
+<button class="btn btn-ghost" id="openCompany" type="button">Instellingen</button>
+</div>
+</div>
+<div id="finSectionVat">
+<div class="card">
+<div class="toolbar" style="justify-content:space-between;gap:10px;flex-wrap:wrap">
+<h3 style="margin:0">BTW / Omzetoverzicht</h3>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-ghost" id="invRevenuePrev" type="button">‹ Vorige</button>
+<span class="pill" id="invRevenuePeriodLabel">Deze maand</span>
+<button class="btn btn-ghost" id="invRevenueNext" type="button">Volgende ›</button>
+<select class="input" id="invRevenueMode" style="width:auto;min-width:120px">
+<option value="month">Per maand</option>
+<option value="week">Per week</option>
+</select>
+</div>
+</div>
+<div class="inv-stats" id="invRevenueStats">
+<div class="inv-stat"><div class="small" id="invRevenueGrossLabel">Facturen deze maand</div><div class="big mono" id="invRevenueMonthGross">€ 0,00</div></div>
+<div class="inv-stat"><div class="small" id="invRevenueVatLabel">BTW deze maand</div><div class="big mono" id="invRevenueMonthVat">€ 0,00</div></div>
+<div class="inv-stat"><div class="small">Openstaand totaal</div><div class="big mono" id="invRevenueOpen">€ 0,00</div></div>
+<div class="inv-stat"><div class="small" id="invRevenueYearLabel">Facturen dit jaar</div><div class="big mono" id="invRevenueYearGross">€ 0,00</div></div>
+</div>
+</div>
+<div class="card" id="vatRentalCard" style="margin-top:12px">
+<h3 style="margin:0 0 10px">Verhuur Preeker</h3>
+<div class="inv-stats">
+<div class="inv-stat"><div class="small">Preeker uren</div><div class="big mono" id="vatRentalHours">0,0 uur</div></div>
+<div class="inv-stat"><div class="small">Excl. btw</div><div class="big mono" id="vatRentalEx">€ 0,00</div></div>
+<div class="inv-stat"><div class="small">BTW 21%</div><div class="big mono" id="vatRentalVat">€ 0,00</div></div>
+<div class="inv-stat"><div class="small">Incl. btw</div><div class="big mono" id="vatRentalInc">€ 0,00</div></div>
+</div>
+</div>
+</div>
+<div id="finSectionProducts" style="display:none">
+<div class="card"><h3 style="margin:0 0 10px">Producten</h3><div class="small">Open hier productbeheer of pakketbeheer.</div><div class="finance-subtabs" style="margin-top:10px"><button class="btn btn-ghost" id="openPackages2" type="button">Pakketten</button><button class="btn btn-ghost" id="openProducts2" type="button">Producten</button></div></div>
+</div>
+<div id="finSectionList" style="display:none">
+<div class="card rental-card">
+<div class="toolbar" style="justify-content:space-between">
+<h3 style="margin:0">Verhuur Preeker</h3>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-ghost" id="rentalPrevWeek" type="button">‹ Vorige week</button>
+<span class="pill" id="rentalWeekLabel">Week</span>
+<button class="btn btn-ghost" id="rentalNextWeek" type="button">Volgende week ›</button>
+</div>
+</div>
+<div class="small" style="margin-top:6px">Berekening op basis van alle <b>Preeker</b>-leerlingen met lessen/proeflessen in deze week. Tarief: <b id="preekerRateLabel">€42,56 ex btw per uur</b>.</div>
+<div class="rental-stats">
+<div class="rental-stat"><div class="small">Preeker uren</div><div class="big mono" id="rentalHours">0,0 uur</div></div>
+<div class="rental-stat"><div class="small">Excl. btw</div><div class="big mono" id="rentalEx">€ 0,00</div></div>
+<div class="rental-stat"><div class="small">BTW 21%</div><div class="big mono" id="rentalVat">€ 0,00</div></div>
+<div class="rental-stat"><div class="small">Incl. btw</div><div class="big mono" id="rentalInc">€ 0,00</div></div>
+</div>
+<div class="rental-list" id="rentalList"></div>
+</div>
+</div>
+<div id="finSectionNew">
+<div class="inv-grid">
+<div class="card">
+<h3 style="margin:0 0 10px">Nieuwe factuur</h3>
+<div class="modal-row" style="margin-top:0">
+<div>
+<label class="small">Leerling</label>
+<select class="input" id="invLearner"></select>
+</div>
+<div>
+<label class="small">Type</label>
+<select class="input" id="invItem"></select>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Omschrijving (aanpasbaar)</label>
+<input class="input" id="invDesc" placeholder="Bijv. 10 rijlessen"/>
+</div>
+<div>
+<label class="small">Bedrag (€)</label>
+<input class="input" id="invAmount" min="0" step="0.01" type="number"/>
+</div>
+</div>
+<div class="toolbar" style="margin-top:10px;justify-content:space-between">
+<div class="small">Voeg meerdere regels samen op één factuur: lessen + examen + TTT + verzekering.</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-ghost" id="invAddLine" type="button">+ Regel toevoegen</button>
+<button class="btn btn-ghost" id="invClearDraft" type="button">Leegmaken</button>
+</div>
+</div>
+<div class="card" style="margin-top:12px;padding:12px;background:#f9fbff">
+<div class="toolbar" style="justify-content:space-between">
+<div>
+<div style="font-weight:900">Conceptfactuur</div>
+<div class="small" id="invDraftMeta">Nog geen regels toegevoegd.</div>
+</div>
+<span class="pill" id="invDraftTotal">Totaal: €0,00</span>
+</div>
+<div class="inv-list" id="invDraftList" style="margin-top:10px"></div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Betalen in termijnen</label>
+<select class="input" id="invTerms">
+<option value="1">1 keer</option>
+<option value="2">2 termijnen</option>
+<option value="3">3 termijnen</option>
+<option value="4">4 termijnen</option>
+</select>
+</div>
+<div>
+<label class="small">Startdatum (termijn 1)</label>
+<input class="input" id="invStart" type="date"/>
+</div>
+</div>
+<div class="toolbar" style="margin-top:10px;justify-content:space-between">
+<div class="small">Tip: als bedrag niet precies deelbaar is, gaat het verschil naar de <b>laatste</b> termijn.</div>
+<button class="btn btn-primary" id="invCreate">Factuur aanmaken</button>
+</div>
+</div>
+<div class="card">
+<h3 style="margin:0 0 10px">Te versturen</h3>
+<div class="inv-list" id="invDueList"></div>
+<div class="hr"></div>
+<h3 style="margin:0 0 10px">Verzonden</h3>
+<div class="inv-list" id="invSentList"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- MODULEBEHEER -->
+<section id="view-modules" style="display:none">
+<div class="card">
+<div class="toolbar" style="justify-content:space-between">
+<h3 style="margin:0">Modulebeheer</h3>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-ghost" id="modExport">Export modules</button>
+<label class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:8px">
+              Import modules
+              <input accept="application/json" id="modImport" style="display:none" type="file"/>
+</label>
+<button class="btn btn-primary" id="modAddModule">+ Module</button>
+</div>
+</div>
+<div class="small" style="margin-top:8px">
+          Hier kan elke rijinstructeur z’n eigen modules en rijtaken maken. Alles wordt lokaal opgeslagen op het apparaat.
+          Verwijderen ruimt ook de bijbehorende scores in de leskaart op.
+        </div>
+</div>
+<div class="modmgr-grid" id="modGrid"></div>
+</section>
+<!-- INSTELLINGEN -->
+<section id="view-settings" style="display:none">
+<div class="card">
+<div class="toolbar" style="justify-content:space-between;align-items:flex-start">
+<div>
+<h3 style="margin:0">⚙️ Instellingen</h3>
+<div class="small">Hier beheer je de instellingen van de app.</div>
+</div>
+
+</div>
+</div>
+<section class="card settings-tab-card">
+<div class="toolbar" style="justify-content:space-between;align-items:flex-start">
+<div>
+<h3 style="margin:0">📞 Banner snelnummers</h3>
+<div class="small">Deze 3 nummers komen bovenin de banner te staan. Bijvoorbeeld rijschool, partner en ANWB.</div>
+</div>
+</div>
+<div aria-label="Banner snelnummers" class="settings-quick-table" role="table" style="margin-top:12px">
+<div class="settings-quick-head" role="row">
+<div role="columnheader">Positie</div>
+<div role="columnheader">Label</div>
+<div role="columnheader">Telefoonnummer</div>
+</div>
+<div class="settings-quick-row" role="row">
+<div class="settings-quick-cell settings-quick-index">1</div>
+<div class="settings-quick-cell"><input class="input" id="setQuickLabel1" placeholder="Bijv. Rijschool"/></div>
+<div class="settings-quick-cell"><input class="input" id="setQuickPhone1" placeholder="06-..."/></div>
+</div>
+<div class="settings-quick-row" role="row">
+<div class="settings-quick-cell settings-quick-index">2</div>
+<div class="settings-quick-cell"><input class="input" id="setQuickLabel2" placeholder="Bijv. Partner"/></div>
+<div class="settings-quick-cell"><input class="input" id="setQuickPhone2" placeholder="06-..."/></div>
+</div>
+<div class="settings-quick-row" role="row">
+<div class="settings-quick-cell settings-quick-index">3</div>
+<div class="settings-quick-cell"><input class="input" id="setQuickLabel3" placeholder="Bijv. ANWB"/></div>
+<div class="settings-quick-cell"><input class="input" id="setQuickPhone3" placeholder="088-..."/></div>
+</div>
+</div>
+<div class="settings-block" style="margin-top:18px">
+<div class="settings-block-title">WhatsApp automatisch bericht</div>
+<div class="small settings-block-sub">AANPASBAAR: gebruik {name}, {date}, {time}, {endTime}, {pickup} en {note}. Lege regels worden automatisch netjes opgeschoond.</div>
+<textarea class="input" id="setWhatsAppTemplate" placeholder="Hoi {name}!
+Reminder rijles: {date} om {time} (tot {endTime}).
+{pickup}
+{note}
+Tot dan!" rows="7"></textarea>
+</div>
+<div class="toolbar" style="margin-top:14px">
+<button class="btn btn-primary" id="settingsSaveBtn" type="button">Instellingen opslaan</button>
+</div>
+</section>
+</section>
+</main>
+</div>
+<!-- Modal: Nieuwe/Bewerk les -->
+<div class="modal-overlay" id="modalLesson">
+<div aria-modal="true" class="modal" role="dialog">
+<h3 id="nlTitle">Nieuwe</h3>
+<div class="modal-row">
+<div>
+<label class="small">Leerling</label>
+<input autocomplete="off" class="input" id="nlLearnerSearch" placeholder="Typ naam (bijv. m...)" style="margin-bottom:8px"/>
+<select class="input" id="nlLearner"></select>
+</div>
+<div>
+<label class="small">Datum</label>
+<input class="input" id="nlDate" type="date"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Starttijd</label>
+<div style="display:flex;gap:8px">
+<select class="input" id="nlHour" style="width:110px"></select>
+<select class="input" id="nlMinute" style="width:110px"></select>
+</div>
+</div>
+<div>
+<label class="small">Duur</label>
+<select class="input" id="nlDuration"></select>
+</div>
+</div>
+<div class="small" id="nlEnd" style="margin-top:10px;font-weight:900;font-size:1.05rem;color:#0b376a">Eindtijd: —</div>
+<div class="modal-row">
+<div>
+<label class="small">Type</label>
+<select class="input" id="nlType">
+<option value="lesson">Rijles (blauw)</option>
+<option value="exam">Praktijk examen (rood)</option>
+<option value="trial">Proefles (groen)</option>
+<option value="private">Privé / geblokkeerd (donker oranje)</option>
+</select>
+</div>
+<div>
+<label class="small">Notitie (optioneel)</label>
+<input class="input" id="nlNote" placeholder="Bijv. CBR locatie, BSN, etc."/>
+</div>
+</div>
+<div class="modal-row">
+<div style="grid-column:1 / -1">
+<label class="small">Ophaaladres</label>
+<div style="display:flex; gap:8px">
+<input class="input" id="nlPickup" placeholder="Bijv. Huisadres (automatisch) of ander ophaalpunt" style="flex:1"/>
+<button class="btn btn-ghost" id="nlUseAddr" type="button">Huisadres</button>
+</div>
+<div class="small" style="margin-top:6px">Laat leeg als je geen ophaalregel in de agenda wilt.</div>
+</div>
+</div>
+<div class="modal-actions">
+<button class="btn btn-danger" id="nlDelete" style="display:none">Verwijder</button>
+<div class="modal-actions-right">
+<button class="btn btn-ghost" id="nlWhatsApp" type="button">🟢 WhatsApp</button><button class="btn btn-ghost" id="nlToSheet" type="button">Leskaart</button>
+<button class="btn btn-ghost" id="nlCancel">Annuleren</button>
+<button class="btn btn-primary" id="nlSave">Opslaan</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal: Leerling -->
+<div class="modal-overlay" id="modalLearner">
+<div aria-modal="true" class="modal learner-modal" role="dialog">
+<h3 id="lrTitle">Leerling</h3>
+<div class="modal-row">
+<div>
+<label class="small">Naam</label>
+<input class="input" id="lrName" placeholder="Voornaam Achternaam"/>
+</div>
+<div>
+<label class="small">Telefoon</label>
+<input class="input" id="lrPhone" placeholder="06-..."/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Adres</label>
+<input class="input" id="lrAddress" placeholder="Straat + huisnummer, Plaats"/>
+</div>
+<div>
+<label class="small">Postcode</label>
+<input class="input" id="lrZip" placeholder="1234 AB"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">E-mail</label>
+<input class="input" id="lrEmail" placeholder="naam@voorbeeld.nl"/>
+</div>
+<div>
+<label class="small">Standaard lesduur</label>
+<select class="input" id="lrAvg"></select>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Bron / rijschool</label>
+<select class="input" id="lrSource">
+<option value="own">Eigen rijschool</option>
+<option value="preeker">Preeker</option>
+<option value="old">Oude werkgever</option>
+</select>
+</div>
+<div>
+<label class="small">CBR relatienummer</label>
+<div style="display:flex;gap:8px">
+<input class="input" id="lrRelation" placeholder="Bijv. 1234567" style="flex:1"/>
+<button class="btn btn-ghost" id="lrCopyRelation" type="button">Kopieer</button>
+</div>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Gekozen pakket</label>
+<select class="input" id="lrPackage"></select>
+</div>
+<div>
+<label class="small">Pakket voortgang</label>
+<div class="input" id="lrPackageStats" style="min-height:42px;display:flex;align-items:center;background:#f9fbff">Nog geen pakket gekozen</div>
+</div>
+</div>
+<div class="small" style="margin-top:6px">Bron helpt bij overzicht en verhuur-berekening. CBR relatienummer is alleen zichtbaar bij leerlinggegevens, niet in agenda. Bij eigen leerlingen kun je ook een pakket kiezen en het verbruik volgen.</div>
+<div style="margin-top:10px">
+<label class="small">Notitie</label>
+<textarea class="input" id="lrNote" placeholder="Opmerkingen/notitie" rows="3"></textarea>
+</div>
+<div class="modal-actions">
+<button class="btn btn-ghost" id="lrCancel">Annuleren</button>
+<button class="btn btn-primary" id="lrSave">Opslaan</button>
+</div>
+</div>
+</div>
+<!-- Modal: Score kiezen -->
+<div class="modal-overlay" id="modalScore">
+<div aria-modal="true" class="modal" role="dialog" style="width:560px">
+<h3>Kies score</h3>
+<div class="small" id="scoreMeta">Onderdeel …</div>
+<label class="switch small" style="margin-top:10px">
+<input checked="" id="scoreCloseToggle" type="checkbox"/>
+      Popup sluiten na kiezen
+    </label>
+<div class="score-grid" id="scoreGrid"></div>
+<div class="modal-actions" style="margin-top:12px">
+<button class="btn btn-ghost" id="scoreClear">Leegmaken</button>
+<div class="modal-actions-right">
+<button class="btn btn-ghost" id="scoreFillModule">Vul module</button>
+<button class="btn btn-ghost" id="scoreFillLesson">Vul hele les</button>
+<button class="btn btn-ghost" id="scoreCancel">Annuleren</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal: Pakketbeheer -->
+<div class="modal-overlay" id="modalPackages">
+<div aria-modal="true" class="modal" role="dialog" style="width:760px;max-width:94vw">
+<div class="toolbar" style="justify-content:space-between">
+<h3 style="margin:0">Pakketbeheer</h3>
+<button class="btn btn-primary" id="pkgAdd" type="button">+ Pakket</button>
+</div>
+<div class="small" style="margin-top:6px">Hier beheer je je vaste pakketten. Examens, TTT en andere losse onderdelen blijven gewoon los beschikbaar bij facturen.</div>
+<div class="inv-list" id="pkgList" style="margin-top:12px"></div>
+<div class="card" style="margin-top:12px;background:#f9fbff">
+<h3 id="pkgTitle" style="margin:0 0 10px">Pakket</h3>
+<div class="modal-row" style="margin-top:0">
+<div>
+<label class="small">Naam pakket</label>
+<input class="input" id="pkgName" placeholder="Bijv. Compleet pakket"/>
+</div>
+<div>
+<label class="small">Korte omschrijving</label>
+<input class="input" id="pkgShort" placeholder="Bijv. Compleet pakket"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Aantal lessen</label>
+<input class="input" id="pkgLessons" min="1" step="1" type="number"/>
+</div>
+<div>
+<label class="small">Standaard lesduur (min)</label>
+<input class="input" id="pkgMinutes" min="30" step="5" type="number"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Totaalprijs (€ incl. btw)</label>
+<input class="input" id="pkgAmount" min="0" step="0.01" type="number"/>
+</div>
+<div>
+<label class="small">BTW op lessen</label>
+<select class="input" id="pkgVat">
+<option value="21">21%</option>
+<option value="9">9%</option>
+<option value="0">0%</option>
+</select>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Examen inbegrepen?</label>
+<select class="input" id="pkgExamIncluded">
+<option value="yes">Ja</option>
+<option value="no">Nee</option>
+</select>
+</div>
+<div>
+<label class="small">Totaal examenbedrag (€)</label>
+<input class="input" id="pkgExamAmount" min="0" step="0.01" type="number"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">CBR-deel examen (€ vrij van btw)</label>
+<input class="input" id="pkgExamCbrAmount" min="0" step="0.01" type="number" value="143.50"/>
+</div>
+<div>
+<label class="small">Jouw examendeel (€ met btw)</label>
+<input class="input" id="pkgExamServiceAmount" min="0" readonly="" step="0.01" type="number"/>
+</div>
+</div>
+<div class="modal-actions">
+<button class="btn btn-danger" id="pkgDelete" style="display:none" type="button">Verwijder pakket</button>
+<div class="modal-actions-right">
+<button class="btn btn-ghost" id="pkgClear" type="button">Leegmaken</button>
+<button class="btn btn-primary" id="pkgSave" type="button">Opslaan</button>
+</div>
+</div>
+</div>
+<div class="modal-actions" style="margin-top:12px">
+<div></div>
+<button class="btn btn-ghost" id="pkgClose" type="button">Sluiten</button>
+</div>
+</div>
+</div>
+<!-- Modal: Productbeheer -->
+<div class="modal-overlay" id="modalProducts">
+<div aria-modal="true" class="modal" role="dialog" style="width:760px;max-width:94vw">
+<div class="toolbar" style="justify-content:space-between">
+<h3 style="margin:0">Productbeheer</h3>
+<button class="btn btn-primary" id="prodAdd" type="button">+ Product</button>
+</div>
+<div class="small" style="margin-top:6px">Hier beheer je losse producten voor facturen, zoals lessen, examens en andere onderdelen.</div>
+<div class="inv-list" id="prodList" style="margin-top:12px"></div>
+<div class="card" style="margin-top:12px;background:#f9fbff">
+<h3 id="prodTitle" style="margin:0 0 10px">Product</h3>
+<div class="modal-row" style="margin-top:0">
+<div>
+<label class="small">Naam product</label>
+<input class="input" id="prodName" placeholder="Bijv. Praktijkexamen"/>
+</div>
+<div>
+<label class="small">Korte omschrijving</label>
+<input class="input" id="prodShort" placeholder="Bijv. CBR praktijkexamen"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Groep</label>
+<select class="input" id="prodGroup">
+<option value="Los / Aanvulling">Los / Aanvulling</option>
+<option value="Examens">Examens</option>
+<option value="Overig">Overig</option>
+<option value="Custom">Custom</option>
+</select>
+</div>
+<div>
+<label class="small">Bedrag (€ incl. btw)</label>
+<input class="input" id="prodAmount" min="0" step="0.01" type="number"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">BTW</label>
+<select class="input" id="prodVat">
+<option value="21">21%</option>
+<option value="9">9%</option>
+<option value="0">0%</option>
+</select>
+</div>
+<div>
+<label class="small">Type</label>
+<select class="input" id="prodExamOnly">
+<option value="no">Normaal product</option>
+<option value="yes">Examen / vast bedrag</option>
+</select>
+</div>
+</div>
+<div class="card" id="prodExamSplit" style="display:none;margin-top:10px;background:#fff">
+<div class="small" style="margin-bottom:10px">Voor examenproducten kun je het btw-vrije CBR-deel apart invullen. De rest wordt automatisch als jouw deel met 21% btw gezien.</div>
+<div class="modal-row" style="margin-top:0">
+<div>
+<label class="small">CBR deel (€ vrij van btw)</label>
+<input class="input" id="prodExamCbrAmount" min="0" placeholder="Bijv. 202.00" step="0.01" type="number"/>
+</div>
+<div>
+<label class="small">Jouw deel (€ incl. btw)</label>
+<input class="input" id="prodExamServiceAmount" min="0" readonly="" step="0.01" type="number"/>
+</div>
+</div>
+</div>
+<div class="modal-actions">
+<button class="btn btn-danger" id="prodDelete" style="display:none" type="button">Verwijder product</button>
+<div class="modal-actions-right">
+<button class="btn btn-ghost" id="prodClear" type="button">Leegmaken</button>
+<button class="btn btn-primary" id="prodSave" type="button">Opslaan</button>
+</div>
+</div>
+</div>
+<div class="modal-actions" style="margin-top:12px">
+<div></div>
+<button class="btn btn-ghost" id="prodClose" type="button">Sluiten</button>
+</div>
+</div>
+</div>
+<!-- Modal: Bedrijfsinstellingen -->
+<div class="modal-overlay" id="modalCompany">
+<div aria-modal="true" class="modal" role="dialog">
+<h3>App instellingen</h3>
+<div class="small">Hier beheer je je bedrijfsgegevens, app-opmaak en de 3 telefoonnummers in de banner.</div>
+<div class="modal-row">
+<div>
+<label class="small">Bedrijfsnaam</label>
+<input class="input" id="coName" placeholder="Rijschool ..."/>
+</div>
+<div>
+<label class="small">E-mail</label>
+<input class="input" id="coEmail" placeholder="info@..."/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Telefoon</label>
+<input class="input" id="coPhone" placeholder="06-..."/>
+</div>
+<div>
+<label class="small">Adres (optioneel)</label>
+<input class="input" id="coAddress" placeholder="Straat + plaats"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">KVK (optioneel)</label>
+<input class="input" id="coKvk" placeholder="..."/>
+</div>
+<div>
+<label class="small">BTW (optioneel)</label>
+<input class="input" id="coVat" placeholder="..."/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">IBAN</label>
+<input class="input" id="coIban" placeholder="NL00BANK0123456789"/>
+</div>
+<div>
+<label class="small">Rekeninghouder</label>
+<input class="input" id="coAccountName" placeholder="t.n.v. Rijschool ..."/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Betaaltermijn (dagen)</label>
+<input class="input" id="coPayDays" min="1" placeholder="14" step="1" type="number"/>
+</div>
+<div>
+<label class="small">Betaaltekst (optioneel)</label>
+<input class="input" id="coPayText" placeholder="Onder vermelding van het factuurnummer."/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Preeker tarief per uur (ex btw)</label>
+<input class="input" id="coPreekerRate" min="0" placeholder="42.56" step="0.01" type="number"/>
+</div>
+<div>
+<label class="small">Accentkleur</label>
+<input class="input" id="coColor" style="height:44px;padding:6px" type="color" value="#004080"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Slogan / ondertitel</label>
+<input class="input" id="coTagline" placeholder="Bijv. Zelfverzekerd de weg op"/>
+</div>
+<div>
+<label class="small">Logo (optioneel)</label>
+<input accept="image/*" class="input" id="coLogo" type="file"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Tarief uitleg</label>
+<div class="small" style="padding-top:10px">Gebruik hier het Preeker verhuurtarief per uur exclusief btw. Standaard staat dit op 42,56.</div>
+</div>
+<div>
+<label class="small">Voorbeeld slogan</label>
+<div class="small" style="padding-top:10px">Deze tekst komt onder je bedrijfsnaam te staan in de app.</div>
+</div>
+</div>
+<div class="settings-block">
+<div class="settings-block-title">Banner snelnummers</div>
+<div class="small settings-block-sub">Deze 3 nummers komen bovenin de banner te staan, bijvoorbeeld Rijschool, ANWB en Partner.</div>
+<div aria-label="Banner snelnummers" class="settings-quick-table" role="table">
+<div class="settings-quick-head" role="row">
+<div role="columnheader">Positie</div>
+<div role="columnheader">Label</div>
+<div role="columnheader">Telefoonnummer</div>
+</div>
+<div class="settings-quick-row" role="row">
+<div class="settings-quick-cell settings-quick-index">1</div>
+<div class="settings-quick-cell"><input class="input" id="coQuickLabel1" placeholder="Bijv. Rijschool"/></div>
+<div class="settings-quick-cell"><input class="input" id="coQuickPhone1" placeholder="06-..."/></div>
+</div>
+<div class="settings-quick-row" role="row">
+<div class="settings-quick-cell settings-quick-index">2</div>
+<div class="settings-quick-cell"><input class="input" id="coQuickLabel2" placeholder="Bijv. ANWB"/></div>
+<div class="settings-quick-cell"><input class="input" id="coQuickPhone2" placeholder="088-..."/></div>
+</div>
+<div class="settings-quick-row" role="row">
+<div class="settings-quick-cell settings-quick-index">3</div>
+<div class="settings-quick-cell"><input class="input" id="coQuickLabel3" placeholder="Bijv. Partner"/></div>
+<div class="settings-quick-cell"><input class="input" id="coQuickPhone3" placeholder="06-..."/></div>
+</div>
+</div>
+</div>
+<div class="small" id="coLogoInfo" style="margin-top:6px">Je kunt hier je eigen logo uploaden. Dit wordt lokaal opgeslagen op dit apparaat.</div>
+<div class="modal-actions">
+<button class="btn btn-ghost" id="coCancel">Sluiten</button>
+<button class="btn btn-primary" id="coSave">Opslaan</button>
+</div>
+</div>
+</div>
+<!-- Modal: Facturen per leerling -->
+<div class="modal-overlay" id="modalLearnerInvoices" style="display:none !important">
+<div aria-modal="true" class="modal" role="dialog" style="width:820px;max-width:96vw">
+<h3 id="liTitle">Facturen</h3>
+<div class="small">Hier zie je per leerling welke facturen zijn gemaakt, in hoeveel termijnen, welke verzonden/betaald zijn en wanneer de volgende termijn vervalt.</div>
+<div id="liBody" style="margin-top:12px;max-height:70vh;overflow:auto"></div>
+<div class="modal-actions">
+<div class="small">Tip: “Vervalt” is de datum waarop je de volgende termijn kunt sturen.</div>
+<div class="modal-actions-right">
+<button class="btn btn-ghost" id="liClose">Sluiten</button>
+</div>
+</div>
+</div>
+</div>
+<div class="toast" id="toast">Opgeslagen</div>
+</div>
+<script src="js/core.js"></script>
+<script src="js/agenda.js"></script>
+<script src="js/learners-sheet.js"></script>
+<script src="js/finance-modules-init.js"></script>
+<script src="js/supabase-sync.js"></script>
+</body>
+</html>
