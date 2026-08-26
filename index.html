@@ -363,6 +363,23 @@
 <div class="settings-quick-cell"><input class="input" id="setQuickPhone3" placeholder="088-..."/></div>
 </div>
 </div>
+
+<div class="settings-block" style="margin-top:18px">
+  <div class="settings-block-title">Bedrijfslogo</div>
+  <div class="small settings-block-sub">Upload hier het logo van Rijschool den Hartog. Het logo wordt lokaal op dit apparaat opgeslagen en direct in DrivePlan gebruikt.</div>
+  <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px">
+    <img id="setCompanyLogoPreview" alt="Bedrijfslogo" style="width:180px;height:80px;object-fit:contain;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:8px;display:none"/>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <label class="btn btn-ghost" style="cursor:pointer">
+        Logo kiezen
+        <input id="setCompanyLogo" type="file" accept="image/*" style="display:none"/>
+      </label>
+      <button class="btn btn-ghost" id="setCompanyLogoRemove" type="button">Logo verwijderen</button>
+    </div>
+  </div>
+  <div class="small" id="setCompanyLogoInfo" style="margin-top:8px">Nog geen eigen logo ingesteld.</div>
+</div>
+
 <div class="settings-block" style="margin-top:18px">
 <div class="settings-block-title">WhatsApp automatisch bericht</div>
 <div class="small settings-block-sub">AANPASBAAR: gebruik {name}, {date}, {time}, {endTime}, {pickup} en {note}. Lege regels worden automatisch netjes opgeschoond.</div>

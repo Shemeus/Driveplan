@@ -1275,6 +1275,19 @@ function syncSettingsTabFromCompany(){
   if($('#setQuickLabel3')) $('#setQuickLabel3').value = (company.quickContacts[2]&&company.quickContacts[2].label)||'ANWB';
   if($('#setQuickPhone3')) $('#setQuickPhone3').value = (company.quickContacts[2]&&company.quickContacts[2].phone)||'';
   if($('#setWhatsAppTemplate')) $('#setWhatsAppTemplate').value = (company.whatsappTemplate || defaultLessonWhatsAppTemplate());
+  var logoPreview = $('#setCompanyLogoPreview');
+  var logoInfo = $('#setCompanyLogoInfo');
+  if(logoPreview){
+    if(company.logo){
+      logoPreview.src = company.logo;
+      logoPreview.style.display = 'block';
+      if(logoInfo) logoInfo.textContent = 'Bedrijfslogo is ingesteld op dit apparaat.';
+    }else{
+      logoPreview.removeAttribute('src');
+      logoPreview.style.display = 'none';
+      if(logoInfo) logoInfo.textContent = 'Nog geen eigen logo ingesteld.';
+    }
+  }
 }
 function saveSettingsTab(){
   // AANPASBAAR: alles wat je hier opslaat, kun je later zelf aanpassen in Instellingen.
@@ -1413,6 +1426,33 @@ function saveSettingsTab(){
           reader.readAsDataURL(file);
         }catch(e){ done(''); }
       }
+
+      var settingsLogoInput = $('#setCompanyLogo');
+      if(settingsLogoInput) settingsLogoInput.addEventListener('change', function(){
+        var file = this.files && this.files[0];
+        if(!file) return;
+        resizeLogoFile(file, function(dataUrl){
+          if(!dataUrl){ alert('Logo kon niet worden verwerkt.'); return; }
+          company.logo = dataUrl;
+          store.write(K.company, company);
+          applyBranding();
+          setHeroMeta();
+          syncSettingsTabFromCompany();
+          toast('Bedrijfslogo opgeslagen');
+        });
+      });
+
+      var settingsLogoRemove = $('#setCompanyLogoRemove');
+      if(settingsLogoRemove) settingsLogoRemove.addEventListener('click', function(){
+        if(!company.logo){ toast('Er is geen bedrijfslogo ingesteld'); return; }
+        if(!confirm('Bedrijfslogo verwijderen?')) return;
+        company.logo = '';
+        store.write(K.company, company);
+        applyBranding();
+        setHeroMeta();
+        syncSettingsTabFromCompany();
+        toast('Bedrijfslogo verwijderd');
+      });
 
       $('#coLogo').addEventListener('change', function(){
         var file = this.files && this.files[0];
