@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v15-logo-upload';
+const CACHE_NAME = 'driveplan-v16-portal-sync';
 
 const urlsToCache = [
   './',

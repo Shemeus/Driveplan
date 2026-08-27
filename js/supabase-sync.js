@@ -11,6 +11,8 @@
   var dpSession = null;
   var dpSyncTimer = null;
   var dpPullTimer = null;
+  var dpPortalSyncTimer = null;
+  var dpPortalSyncBusy = false;
   var dpApplyingRemote = false;
   var dpLastRemoteUpdatedAt = '';
   var dpOriginalStoreWrite = null;
@@ -76,6 +78,199 @@
     return dpSession && dpSession.user && dpSession.user.id ? dpSession.user.id : '';
   }
 
+
+  /* ===== DrivePortal sync =====
+     DrivePlan blijft de bron. Alleen leerlingdata die in het portaal thuishoort
+     wordt naar de afgeschermde portal_* tabellen gekopieerd.
+  */
+  function portalApi(path, options){
+    options = options || {};
+    var headers = Object.assign(authHeaders(dpSession && dpSession.access_token), options.headers || {});
+    return fetch(DP_SUPABASE_URL + '/rest/v1/' + path, Object.assign({}, options, {headers:headers}));
+  }
+
+  function lastPortalScore(lid, pid){
+    var byPart = progress && progress[lid] && progress[lid][pid] ? progress[lid][pid] : null;
+    if(!byPart || typeof byPart !== 'object') return null;
+    var dates = Object.keys(byPart).sort();
+    for(var i=dates.length-1;i>=0;i--){
+      var v = byPart[dates[i]];
+      if(v!==null && v!==undefined && v!==''){
+        var n = Number(v);
+        return isNaN(n) ? null : n;
+      }
+    }
+    return null;
+  }
+
+  function lessonStartIso(ev){
+    if(!ev || !ev.date) return null;
+    var tm = String(ev.time || '00:00');
+    var d = new Date(ev.date + 'T' + tm + ':00');
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  function lessonEndIso(ev){
+    var start = lessonStartIso(ev);
+    if(!start) return null;
+    var d = new Date(start);
+    d.setMinutes(d.getMinutes() + Number(ev.duration || 60));
+    return d.toISOString();
+  }
+
+  function portalLessonTitle(ev){
+    if(ev && ev.type === 'exam') return 'Praktijkexamen';
+    return 'Rijles';
+  }
+
+  async function portalJson(path, options){
+    var r = await portalApi(path, options);
+    var txt = await r.text();
+    var data = null;
+    try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!r.ok){
+      throw new Error('DrivePortal API ' + r.status + ': ' + (typeof data==='string' ? data : JSON.stringify(data||{})));
+    }
+    return data;
+  }
+
+  async function syncOneLearnerToPortal(learner){
+    if(!learner || !learner.id || !String(learner.email || '').trim()) return;
+
+    var studentRows = await portalJson('portal_students?on_conflict=driveplan_learner_id', {
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
+      body:JSON.stringify({
+        driveplan_learner_id:String(learner.id),
+        email:String(learner.email).trim(),
+        full_name:String(learner.name || 'Leerling'),
+        active:true
+      })
+    });
+    var student = studentRows && studentRows[0];
+    if(!student || !student.id) return;
+    var sid = student.id;
+
+    var mods = (curriculum && Array.isArray(curriculum.modules)) ? curriculum.modules : [];
+    var modRows = mods.map(function(m,mi){
+      return {
+        student_id:sid,
+        module_key:String(m.id),
+        module_name:String(m.label || ('Module '+(mi+1))),
+        sort_order:mi,
+        active:true
+      };
+    });
+    if(modRows.length){
+      await portalJson('portal_modules?on_conflict=student_id,module_key', {
+        method:'POST',
+        headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify(modRows)
+      });
+    }
+
+    var existingModules = await portalJson('portal_modules?student_id=eq.'+encodeURIComponent(sid)+'&select=id,module_key');
+    var activeModuleKeys = modRows.map(function(x){return x.module_key;});
+    for(var em=0; em<(existingModules||[]).length; em++){
+      var oldM = existingModules[em];
+      if(activeModuleKeys.indexOf(String(oldM.module_key))===-1){
+        await portalJson('portal_modules?id=eq.'+encodeURIComponent(oldM.id), {method:'DELETE'});
+      }
+    }
+
+    existingModules = await portalJson('portal_modules?student_id=eq.'+encodeURIComponent(sid)+'&select=id,module_key');
+    var moduleIdByKey = {};
+    (existingModules||[]).forEach(function(m){ moduleIdByKey[String(m.module_key)] = m.id; });
+
+    for(var mi=0; mi<mods.length; mi++){
+      var mod = mods[mi];
+      var moduleId = moduleIdByKey[String(mod.id)];
+      if(!moduleId) continue;
+      var parts = Array.isArray(mod.parts) ? mod.parts : [];
+      var scoreRows = parts.map(function(part,pi){
+        return {
+          student_id:sid,
+          module_id:moduleId,
+          item_key:String(part.id),
+          item_name:String(part.t || ('Onderdeel '+(pi+1))),
+          score:lastPortalScore(learner.id, part.id),
+          sort_order:pi,
+          active:true,
+          updated_at:new Date().toISOString()
+        };
+      });
+      if(scoreRows.length){
+        await portalJson('portal_scores?on_conflict=student_id,module_id,item_key', {
+          method:'POST',
+          headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+          body:JSON.stringify(scoreRows)
+        });
+      }
+      var existingScores = await portalJson('portal_scores?student_id=eq.'+encodeURIComponent(sid)+'&module_id=eq.'+encodeURIComponent(moduleId)+'&select=id,item_key');
+      var activeKeys = scoreRows.map(function(x){return x.item_key;});
+      for(var es=0; es<(existingScores||[]).length; es++){
+        var oldS = existingScores[es];
+        if(activeKeys.indexOf(String(oldS.item_key))===-1){
+          await portalJson('portal_scores?id=eq.'+encodeURIComponent(oldS.id), {method:'DELETE'});
+        }
+      }
+    }
+
+    // Afspraken: DrivePlan is leidend. Alleen vandaag en toekomst naar het portaal.
+    await portalJson('portal_appointments?student_id=eq.'+encodeURIComponent(sid), {method:'DELETE'});
+    var today = new Date(); today.setHours(0,0,0,0);
+    var apptRows = (Array.isArray(lessons)?lessons:[]).filter(function(ev){
+      if(String(ev.learnerId)!==String(learner.id)) return false;
+      var st = lessonStartIso(ev); if(!st) return false;
+      return new Date(st) >= today;
+    }).map(function(ev){
+      return {
+        student_id:sid,
+        driveplan_appointment_id:String(ev.id || ''),
+        title:portalLessonTitle(ev),
+        start_at:lessonStartIso(ev),
+        end_at:lessonEndIso(ev),
+        location:String(ev.pickup || ''),
+        status:'planned'
+      };
+    });
+    if(apptRows.length){
+      await portalJson('portal_appointments', {
+        method:'POST',
+        headers:{'Prefer':'return=minimal'},
+        body:JSON.stringify(apptRows)
+      });
+    }
+  }
+
+  async function syncDrivePortalNow(){
+    if(dpPortalSyncBusy || dpApplyingRemote || !dpSession) return false;
+    if(!await refreshSessionIfNeeded()) return false;
+    dpPortalSyncBusy = true;
+    try{
+      var list = Array.isArray(learners) ? learners : [];
+      for(var i=0;i<list.length;i++){
+        if(String(list[i].email || '').trim()) await syncOneLearnerToPortal(list[i]);
+      }
+      var el = document.getElementById('dpPortalSyncStatus');
+      if(el) el.textContent = 'Leerlingportaal bijgewerkt';
+      return true;
+    }catch(e){
+      console.warn('DrivePortal synchronisatie mislukt', e);
+      var er = document.getElementById('dpPortalSyncStatus');
+      if(er) er.textContent = 'Portaal sync mislukt';
+      return false;
+    }finally{
+      dpPortalSyncBusy = false;
+    }
+  }
+
+  function schedulePortalSync(){
+    if(dpApplyingRemote || !dpSession) return;
+    clearTimeout(dpPortalSyncTimer);
+    dpPortalSyncTimer = setTimeout(function(){ syncDrivePortalNow(); }, 1200);
+  }
+
   function snapshotState(){
     return {
       version:'driveplan-sync-v1',
@@ -123,6 +318,7 @@
       if(typeof renderTodayTomorrow==='function') renderTodayTomorrow();
     } finally {
       dpApplyingRemote = false;
+      schedulePortalSync();
     }
   }
 
@@ -215,6 +411,8 @@
         K.learners,K.lessons,K.progress,K.company,K.curriculum,K.sel,K.hist,K.rentalWeek
       ];
       if(keys.indexOf(k)!==-1) scheduleCloudSave();
+      var portalKeys = [K.learners,K.lessons,K.progress,K.curriculum];
+      if(portalKeys.indexOf(k)!==-1) schedulePortalSync();
     };
   }
 
@@ -244,8 +442,15 @@
       '<div class="small">DrivePlan synchroniseert automatisch tussen je apparaten.</div>'+
       '<div style="margin-top:10px"><b id="dpSyncStatus">Niet ingelogd</b></div>'+
       '<div class="small" id="dpSyncEmail" style="margin-top:4px"></div>'+
+      '<div class="small" id="dpPortalSyncStatus" style="margin-top:8px">Leerlingportaal synchroniseert automatisch</div>'+
+      '<button class="btn btn-ghost" id="dpPortalSyncNow" type="button" style="margin-top:10px">Portaal nu bijwerken</button>'+
       '<button class="btn btn-ghost" id="dpSyncLogout" type="button" style="margin-top:10px;display:none">Uitloggen</button>';
     view.appendChild(card);
+    var ps = document.getElementById('dpPortalSyncNow');
+    if(ps) ps.addEventListener('click', function(){
+      ps.disabled = true;
+      syncDrivePortalNow().finally(function(){ ps.disabled = false; });
+    });
     var b = document.getElementById('dpSyncLogout');
     if(b) b.addEventListener('click', function(){
       saveSession(null);
@@ -331,4 +536,6 @@
       initCloudSync().catch(function(e){ console.error('DrivePlan sync init',e); });
     }, 0);
   });
+
+  window.syncDrivePortalNow = syncDrivePortalNow;
 })();
