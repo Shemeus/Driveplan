@@ -506,7 +506,7 @@ $('#learnerList').addEventListener('click', function(e){
       }
       var firstName=((l.name||'').trim().split(/\s+/)[0] || '');
       var portalUrl='https://portal.rijschooldenhartog.nl/';
-      var txt='Hoi'+(firstName?' '+firstName:'')+', je kunt vanaf nu gebruikmaken van DrivePortal van Rijschool Den Hartog. Hier vind je je leskaart, voortgang en afspraken en kun je je beschikbaarheidsvoorkeuren doorgeven.\n\nGa naar '+portalUrl+' en vul het e-mailadres in waarmee je bij de rijschool bekend bent: '+(l.email||'').trim()+'. Je ontvangt daarna per e-mail een persoonlijke inloglink.';
+      var txt='Hoi'+(firstName?' '+firstName:'')+', je kunt vanaf nu gebruikmaken van DrivePortal van Rijschool Den Hartog. Hier vind je je leskaart, voortgang en afspraken. Ook kun je aangeven op welke dagen en tijden je bij voorkeur beschikbaar bent.\n\nGa naar '+portalUrl+' en vul het e-mailadres in waarmee je bij de rijschool bekend bent: '+(l.email||'').trim()+'. Je ontvangt daarna per e-mail een persoonlijke inloglink.';
       var num=(typeof sanitizePhoneForWhatsApp==='function') ? sanitizePhoneForWhatsApp(l.phone||'') : '';
       var waUrl=num ? ('https://wa.me/'+num+'?text='+encodeURIComponent(txt)) : ('https://wa.me/?text='+encodeURIComponent(txt));
       window.open(waUrl,'_blank','noopener');
