@@ -463,6 +463,7 @@ function renderLearners(){
           (l.note?'<div class="small" style="margin-top:6px">'+escapeHtml(l.note)+'</div>':'')+
         '</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          ((l.email||'').trim() ? '<button class="btn btn-ghost" data-action="portalinvite">🚘 DrivePortal uitnodigen</button><button class="btn btn-ghost" data-action="portalcopy">Link kopiëren</button>' : '')+
           '<button class="btn btn-ghost" data-action="sheet">Leskaart</button>'+
           '<button class="btn btn-ghost" data-action="edit">Bewerken</button>'+
           '<button class="btn btn-danger" data-action="delete">Verwijderen</button>'+
@@ -497,6 +498,22 @@ $('#learnerList').addEventListener('click', function(e){
     var action = btn.getAttribute('data-action');
     if(action==='newinvoice'){
       openInvoiceForLearner(id);
+    }else if(action==='portalinvite'){
+      var l=learners.find(function(x){return x.id===id});
+      if(!l || !(l.email||'').trim()){
+        toast('Vul eerst een e-mailadres in bij deze leerling');
+        return;
+      }
+      var firstName=((l.name||'').trim().split(/\s+/)[0] || '');
+      var portalUrl='https://portal.rijschooldenhartog.nl/';
+      var txt='Hoi'+(firstName?' '+firstName:'')+', je kunt vanaf nu gebruikmaken van DrivePortal van Rijschool Den Hartog. Hier vind je je leskaart, voortgang en afspraken en kun je je beschikbaarheidsvoorkeuren doorgeven.\n\nGa naar '+portalUrl+' en vul het e-mailadres in waarmee je bij de rijschool bekend bent: '+(l.email||'').trim()+'. Je ontvangt daarna per e-mail een persoonlijke inloglink.';
+      var num=(typeof sanitizePhoneForWhatsApp==='function') ? sanitizePhoneForWhatsApp(l.phone||'') : '';
+      var waUrl=num ? ('https://wa.me/'+num+'?text='+encodeURIComponent(txt)) : ('https://wa.me/?text='+encodeURIComponent(txt));
+      window.open(waUrl,'_blank','noopener');
+    }else if(action==='portalcopy'){
+      copyTextToClipboard('https://portal.rijschooldenhartog.nl/').then(function(ok){
+        toast(ok ? 'DrivePortal-link gekopieerd' : 'Kopiëren mislukt');
+      });
     }else if(action==='sheet'){
       openSheetFor(id);
     }else if(action==='edit'){
