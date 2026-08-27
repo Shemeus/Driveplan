@@ -198,6 +198,109 @@ function renderTodayTomorrow(){
   renderList(tomorrowISO, 'dpTomorrowList');
 }
 
+
+var whoCanHereState = {date:'', time:'', duration:90};
+
+function dpMinutes(t){
+  var p=String(t||'00:00').split(':');
+  return (Number(p[0])||0)*60 + (Number(p[1])||0);
+}
+function dpWeekdayForIso(iso){
+  var p=String(iso).split('-');
+  var d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
+  return d.getDay();
+}
+function dpExceptionBlocksDate(ex, iso){
+  var start=String(ex.start_date||'');
+  var end=String(ex.end_date||ex.start_date||'');
+  return !!start && iso>=start && iso<=end;
+}
+function ensureWhoCanHereModal(){
+  if(document.getElementById('whoCanHereModal')) return;
+  var el=document.createElement('div');
+  el.id='whoCanHereModal';
+  el.style.cssText='position:fixed;inset:0;z-index:99990;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:18px';
+  el.innerHTML=
+    '<div class="who-can-card">'+
+      '<div class="who-can-head"><div><h3 style="margin:0">Wie kan hier?</h3><div class="small" id="whoCanHereWhen"></div></div><button class="btn btn-ghost" id="whoCanHereClose" type="button">Sluiten</button></div>'+
+      '<div class="who-can-controls"><label>Lesduur <select id="whoCanHereDuration"><option value="60">60 min</option><option value="90" selected>90 min</option><option value="120">120 min</option></select></label></div>'+
+      '<div id="whoCanHereResults" class="who-can-results"><div class="small">Beschikbaarheid laden…</div></div>'+
+    '</div>';
+  document.body.appendChild(el);
+  document.getElementById('whoCanHereClose').addEventListener('click',function(){el.style.display='none'});
+  el.addEventListener('click',function(e){if(e.target===el)el.style.display='none'});
+  document.getElementById('whoCanHereDuration').addEventListener('change',function(){
+    whoCanHereState.duration=Number(this.value)||90;
+    loadWhoCanHereResults();
+  });
+}
+function openWhoCanHere(date,time){
+  ensureWhoCanHereModal();
+  whoCanHereState.date=date;
+  whoCanHereState.time=time;
+  whoCanHereState.duration=90;
+  document.getElementById('whoCanHereDuration').value='90';
+  document.getElementById('whoCanHereWhen').textContent=date+' • '+time;
+  document.getElementById('whoCanHereModal').style.display='flex';
+  loadWhoCanHereResults();
+}
+async function loadWhoCanHereResults(){
+  var out=document.getElementById('whoCanHereResults');
+  if(!out) return;
+  out.innerHTML='<div class="small">Beschikbaarheid laden…</div>';
+  try{
+    if(typeof window.loadDrivePortalAvailabilityMap!=='function') throw new Error('DrivePortal beschikbaarheid niet beschikbaar');
+    var map=await window.loadDrivePortalAvailabilityMap();
+    var weekday=dpWeekdayForIso(whoCanHereState.date);
+    var start=dpMinutes(whoCanHereState.time);
+    var end=start+Number(whoCanHereState.duration||90);
+    var matches=[];
+
+    learners.forEach(function(l){
+      var d=map && map[String(l.id)];
+      if(!d) return;
+      var blocked=(d.exceptions||[]).some(function(ex){return dpExceptionBlocksDate(ex,whoCanHereState.date)});
+      if(blocked) return;
+      var slot=(d.slots||[]).find(function(s){
+        return Number(s.weekday)===weekday && start>=dpMinutes(s.start_time) && end<=dpMinutes(s.end_time);
+      });
+      if(slot) matches.push({learner:l,slot:slot});
+    });
+
+    matches.sort(function(a,b){return (a.learner.name||'').localeCompare((b.learner.name||''),'nl')});
+    if(!matches.length){
+      out.innerHTML='<div class="who-can-empty">Niemand heeft voor dit hele tijdvak een passende beschikbaarheidsvoorkeur opgegeven.</div>';
+      return;
+    }
+    out.innerHTML=matches.map(function(m){
+      var l=m.learner;
+      return '<div class="who-can-person">'+
+        '<div><b>'+escapeHtml(l.name||'Leerling')+'</b><div class="small">Voorkeur '+escapeHtml(String(m.slot.start_time).slice(0,5))+'–'+escapeHtml(String(m.slot.end_time).slice(0,5))+'</div></div>'+
+        '<button class="btn btn-primary who-can-plan" data-lid="'+escapeHtml(String(l.id))+'">Inplannen</button>'+
+      '</div>';
+    }).join('');
+
+    Array.prototype.slice.call(out.querySelectorAll('.who-can-plan')).forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var lid=btn.getAttribute('data-lid');
+        document.getElementById('whoCanHereModal').style.display='none';
+        selectedLearnerId=lid;
+        openLessonModal(null);
+        nlLearner.value=lid;
+        nlDate.value=whoCanHereState.date;
+        setNlTimeFromStr(whoCanHereState.time);
+        nlDuration.innerHTML=buildDurationOptions(normalizeDuration(whoCanHereState.duration));
+        var student=learners.find(function(x){return String(x.id)===String(lid)});
+        if(nlPickup) nlPickup.value=(student&&student.address)?student.address:'';
+        updateEndTime();
+      });
+    });
+  }catch(e){
+    console.warn('Wie kan hier',e);
+    out.innerHTML='<div class="who-can-empty">Beschikbaarheid kon niet worden geladen.</div>';
+  }
+}
+
 function renderWeek(){
   var todayISO = isoToday();
   var days=[0,1,2,3,4,5,6].map(function(i){return addDays(weekStart,i)});
@@ -214,6 +317,21 @@ function renderWeek(){
     body+='</div>';
   });
   $('#weekBody').innerHTML=body;
+
+  // Klik op een leeg tijdvak om te zien welke leerlingen hier volgens hun
+  // DrivePortal-voorkeuren volledig in passen.
+  $all('.day-col').forEach(function(col){
+    var date=col.getAttribute('data-date');
+    Array.prototype.slice.call(col.querySelectorAll('.day-row')).forEach(function(row,idx){
+      row.classList.add('who-can-slot');
+      row.title='Wie kan hier?';
+      row.addEventListener('click',function(e){
+        if(e.target.closest('.event')) return;
+        var time=slots[idx];
+        if(date && time) openWhoCanHere(date,time);
+      });
+    });
+  });
 
   var rowH = 28;
   try{
