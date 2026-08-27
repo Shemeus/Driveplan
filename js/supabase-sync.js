@@ -243,22 +243,82 @@
     }
   }
 
-  async function syncDrivePortalNow(){
-    if(dpPortalSyncBusy || dpApplyingRemote || !dpSession) return false;
-    if(!await refreshSessionIfNeeded()) return false;
+  function setPortalSyncStatus(text){
+    var el = document.getElementById('dpPortalSyncStatus');
+    if(el) el.textContent = text;
+  }
+
+  async function syncDrivePortalNow(manual){
+    if(dpPortalSyncBusy){
+      setPortalSyncStatus('Portaal sync is al bezig…');
+      return false;
+    }
+    if(!dpSession){
+      setPortalSyncStatus('Niet ingelogd — portaal niet bijgewerkt');
+      if(manual) alert('DrivePortal sync kan niet starten omdat DrivePlan niet is ingelogd.');
+      return false;
+    }
+
+    // Een handmatige klik mag niet stil wegvallen terwijl een cloud-pull net wordt toegepast.
+    if(dpApplyingRemote){
+      if(!manual) return false;
+      setPortalSyncStatus('Even wachten op DrivePlan synchronisatie…');
+      for(var wait=0; wait<20 && dpApplyingRemote; wait++){
+        await new Promise(function(resolve){ setTimeout(resolve, 150); });
+      }
+      if(dpApplyingRemote){
+        setPortalSyncStatus('Probeer over een paar seconden opnieuw');
+        alert('DrivePlan is nog bezig met synchroniseren. Probeer Portaal nu bijwerken over een paar seconden opnieuw.');
+        return false;
+      }
+    }
+
+    if(!await refreshSessionIfNeeded()){
+      setPortalSyncStatus('Cloudsessie verlopen — log opnieuw in');
+      if(manual) alert('Je DrivePlan cloudsessie is verlopen. Log opnieuw in en probeer daarna opnieuw.');
+      return false;
+    }
+
     dpPortalSyncBusy = true;
+    setPortalSyncStatus('Leerlingportaal wordt bijgewerkt…');
     try{
       var list = Array.isArray(learners) ? learners : [];
-      for(var i=0;i<list.length;i++){
-        if(String(list[i].email || '').trim()) await syncOneLearnerToPortal(list[i]);
+      var withEmail = list.filter(function(l){ return l && l.id && String(l.email || '').trim(); });
+      if(!withEmail.length){
+        setPortalSyncStatus('Geen leerlingen met e-mailadres gevonden');
+        if(manual) alert('Geen leerlingen met een e-mailadres gevonden. DrivePortal gebruikt het e-mailadres om een leerling te koppelen.');
+        return false;
       }
-      var el = document.getElementById('dpPortalSyncStatus');
-      if(el) el.textContent = 'Leerlingportaal bijgewerkt';
+
+      var okCount = 0;
+      var failCount = 0;
+      var firstError = '';
+      for(var i=0;i<withEmail.length;i++){
+        try{
+          setPortalSyncStatus('Portaal bijwerken '+(i+1)+'/'+withEmail.length+': '+String(withEmail[i].name || 'Leerling'));
+          await syncOneLearnerToPortal(withEmail[i]);
+          okCount++;
+        }catch(oneErr){
+          failCount++;
+          if(!firstError) firstError = (oneErr && oneErr.message) ? oneErr.message : String(oneErr);
+          console.warn('DrivePortal leerling sync mislukt', withEmail[i] && withEmail[i].name, oneErr);
+        }
+      }
+
+      if(failCount){
+        setPortalSyncStatus('Portaal deels bijgewerkt: '+okCount+' gelukt, '+failCount+' mislukt');
+        if(manual) alert('DrivePortal sync deels mislukt.\n\nGelukt: '+okCount+'\nMislukt: '+failCount+'\n\nEerste fout:\n'+firstError);
+        return false;
+      }
+
+      setPortalSyncStatus('Leerlingportaal bijgewerkt · '+okCount+' leerling'+(okCount===1?'':'en'));
+      if(manual) alert('DrivePortal is bijgewerkt.\n\nLeerlingen met e-mailadres: '+okCount+'\n\nEr zijn geen e-mails of uitnodigingen naar leerlingen verstuurd.');
       return true;
     }catch(e){
       console.warn('DrivePortal synchronisatie mislukt', e);
-      var er = document.getElementById('dpPortalSyncStatus');
-      if(er) er.textContent = 'Portaal sync mislukt';
+      var message = e && e.message ? e.message : String(e);
+      setPortalSyncStatus('Portaal sync mislukt: '+message);
+      if(manual) alert('DrivePortal sync mislukt.\n\n'+message);
       return false;
     }finally{
       dpPortalSyncBusy = false;
@@ -268,7 +328,7 @@
   function schedulePortalSync(){
     if(dpApplyingRemote || !dpSession) return;
     clearTimeout(dpPortalSyncTimer);
-    dpPortalSyncTimer = setTimeout(function(){ syncDrivePortalNow(); }, 1200);
+    dpPortalSyncTimer = setTimeout(function(){ syncDrivePortalNow(false); }, 1200);
   }
 
   function snapshotState(){
@@ -449,7 +509,7 @@
     var ps = document.getElementById('dpPortalSyncNow');
     if(ps) ps.addEventListener('click', function(){
       ps.disabled = true;
-      syncDrivePortalNow().finally(function(){ ps.disabled = false; });
+      syncDrivePortalNow(true).finally(function(){ ps.disabled = false; });
     });
     var b = document.getElementById('dpSyncLogout');
     if(b) b.addEventListener('click', function(){
