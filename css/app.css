@@ -470,3 +470,21 @@ body.modal-open{overflow:hidden;touch-action:none}
     #modalLearner .learner-modal{max-height:calc(100vh - 24px)}
   }
 }
+
+
+/* DrivePortal v19 - beschikbaarheidsvoorkeuren */
+.portal-avail-box{
+  margin-top:10px;padding:10px 12px;border:1px solid #dbe7f5;
+  border-radius:12px;background:#f7fbff;max-width:760px
+}
+.portal-avail-title{font-weight:800;color:#173b67;margin-bottom:7px}
+.portal-avail-chips{display:flex;flex-wrap:wrap;gap:6px}
+.portal-avail-chip{
+  display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border-radius:999px;
+  background:#e9f3ff;color:#194f87;border:1px solid #d1e5fb;font-size:12px
+}
+.portal-avail-exceptions{
+  margin-top:7px;color:#6a4b00;background:#fff8e7;border:1px solid #ffe6a8;
+  border-radius:9px;padding:7px 8px;font-size:12px
+}
+.portal-avail-empty{color:#708094}

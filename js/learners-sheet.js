@@ -461,6 +461,7 @@ function renderLearners(){
           (l.relationNumber?'<div class="small" style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">CBR relatienummer: <b>'+escapeHtml(l.relationNumber)+'</b> <button class="btn btn-ghost" data-action="copyrelation" type="button">Kopieer</button></div>':'')+
           packageLine+
           (l.note?'<div class="small" style="margin-top:6px">'+escapeHtml(l.note)+'</div>':'')+
+          ((l.email||'').trim() ? '<div class="portal-avail-box" data-portal-availability="'+escapeHtml(String(l.id))+'"><div class="portal-avail-title">🕒 Beschikbaarheidsvoorkeuren</div><div class="small portal-avail-content">Laden…</div></div>' : '')+
         '</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
           ((l.email||'').trim() ? '<button class="btn btn-ghost" data-action="portalinvite">🚘 DrivePortal uitnodigen</button><button class="btn btn-ghost" data-action="portalcopy">Link kopiëren</button>' : '')+
@@ -471,7 +472,85 @@ function renderLearners(){
       '</div>';
   });
   list.innerHTML=html;
+  renderPortalAvailabilityIntoRows();
 }
+
+
+var portalAvailabilityLoadSeq = 0;
+
+function portalWeekdayName(n){
+  return ['Zo','Ma','Di','Wo','Do','Vr','Za'][Number(n)] || '?';
+}
+
+function portalTimeShort(v){
+  return String(v || '').slice(0,5);
+}
+
+function portalDateNl(v){
+  if(!v) return '';
+  var p = String(v).split('-');
+  return p.length===3 ? (p[2]+'-'+p[1]+'-'+p[0]) : String(v);
+}
+
+function renderPortalAvailabilityIntoRows(){
+  if(typeof window.loadDrivePortalAvailabilityMap !== 'function') return;
+
+  var boxes = document.querySelectorAll('[data-portal-availability]');
+  if(!boxes.length) return;
+
+  var seq = ++portalAvailabilityLoadSeq;
+
+  window.loadDrivePortalAvailabilityMap().then(function(map){
+    if(seq !== portalAvailabilityLoadSeq) return;
+
+    boxes.forEach(function(box){
+      var lid = String(box.getAttribute('data-portal-availability') || '');
+      var data = map && map[lid] ? map[lid] : {slots:[], exceptions:[]};
+      var slots = data.slots || [];
+      var exceptions = data.exceptions || [];
+      var content = box.querySelector('.portal-avail-content');
+      if(!content) return;
+
+      if(!slots.length && !exceptions.length){
+        content.innerHTML = '<span class="portal-avail-empty">Nog geen voorkeuren doorgegeven.</span>';
+        return;
+      }
+
+      var byDay = {};
+      slots.forEach(function(a){
+        var d = Number(a.weekday);
+        if(!byDay[d]) byDay[d] = [];
+        byDay[d].push(portalTimeShort(a.start_time)+'–'+portalTimeShort(a.end_time));
+      });
+
+      var order = {1:1,2:2,3:3,4:4,5:5,6:6,0:7};
+      var slotHtml = Object.keys(byDay)
+        .sort(function(a,b){ return order[a]-order[b]; })
+        .map(function(d){
+          return '<span class="portal-avail-chip"><b>'+portalWeekdayName(d)+'</b> '+escapeHtml(byDay[d].join(', '))+'</span>';
+        }).join('');
+
+      var excHtml = '';
+      if(exceptions.length){
+        excHtml = '<div class="portal-avail-exceptions"><b>Afwijkingen:</b> '+
+          exceptions.map(function(e){
+            var range = portalDateNl(e.start_date);
+            if(e.end_date && e.end_date !== e.start_date) range += ' t/m '+portalDateNl(e.end_date);
+            return '<span>'+escapeHtml(range+(e.note ? ' · '+e.note : ''))+'</span>';
+          }).join(' • ')+'</div>';
+      }
+
+      content.innerHTML = '<div class="portal-avail-chips">'+slotHtml+'</div>'+excHtml;
+    });
+  }).catch(function(err){
+    console.warn('DrivePortal beschikbaarheid laden', err);
+    boxes.forEach(function(box){
+      var content = box.querySelector('.portal-avail-content');
+      if(content) content.textContent = 'Voorkeuren konden niet worden geladen.';
+    });
+  });
+}
+
 
 function openInvoiceForLearner(lid){
   var learner = learners.find(function(x){ return x.id===lid; });

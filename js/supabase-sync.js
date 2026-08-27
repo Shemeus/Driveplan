@@ -597,5 +597,48 @@
     }, 0);
   });
 
+
+  async function loadDrivePortalAvailabilityMap(){
+    if(!dpSession || !dpSession.access_token) return {};
+
+    var students = await portalJson(
+      'portal_students?select=id,driveplan_learner_id&active=eq.true',
+      {method:'GET'}
+    );
+    students = Array.isArray(students) ? students : [];
+    if(!students.length) return {};
+
+    var availability = await portalJson(
+      'portal_availability?select=id,student_id,weekday,start_time,end_time&order=weekday.asc,start_time.asc',
+      {method:'GET'}
+    );
+    availability = Array.isArray(availability) ? availability : [];
+
+    var exceptions = await portalJson(
+      'portal_availability_exceptions?select=id,student_id,start_date,end_date,note&order=start_date.asc',
+      {method:'GET'}
+    );
+    exceptions = Array.isArray(exceptions) ? exceptions : [];
+
+    var now = new Date();
+    var today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+    var result = {};
+
+    students.forEach(function(st){
+      var key = String(st.driveplan_learner_id || '');
+      if(!key) return;
+      result[key] = {
+        slots: availability.filter(function(a){ return a.student_id === st.id; }),
+        exceptions: exceptions.filter(function(e){
+          return e.student_id === st.id && (!e.end_date || e.end_date >= today);
+        })
+      };
+    });
+
+    return result;
+  }
+
+  window.loadDrivePortalAvailabilityMap = loadDrivePortalAvailabilityMap;
+
   window.syncDrivePortalNow = syncDrivePortalNow;
 })();
