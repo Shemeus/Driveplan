@@ -492,7 +492,7 @@ function openLessonModal(id){
     if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId})) nlLearner.value=selectedLearnerId;
     else nlLearner.value=(learners[0]?learners[0].id:'');
 
-    nlDate.value=isoToday();
+    nlDate.value=isoFromDateLocal(weekStart);
     setNlTimeFromStr(suggestNextTime());
 
     var student=learners.find(function(l){return l.id===nlLearner.value});
@@ -529,6 +529,13 @@ if(nlLearnerSearch){
 if(nlHour) nlHour.addEventListener('change', updateEndTime);
 if(nlMinute) nlMinute.addEventListener('change', updateEndTime);
 nlDuration.addEventListener('change', updateEndTime);
+if(nlType) nlType.addEventListener('change', function(){
+  if(nlType.value==='exam'){
+    nlDuration.innerHTML=buildDurationOptions(60);
+    nlDuration.value='60';
+  }
+  updateEndTime();
+});
 
 function saveNewOrEditLesson(){
   var lid=nlLearner.value;

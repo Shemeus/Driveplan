@@ -499,3 +499,9 @@ body.modal-open{overflow:hidden;touch-action:none}
 .who-can-results{display:grid;gap:8px}
 .who-can-person{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 12px;border:1px solid #dce5ef;border-radius:12px}
 .who-can-empty{padding:14px;border-radius:12px;background:#f7f9fc;color:#64748b}
+
+/* v21 */
+.exam-col-header{background:#ffe9e9!important;color:#a61b1b!important}
+.exam-head{font-weight:900;color:#a61b1b}.exam-head small{display:block;color:#a85b5b!important}
+.exam-sheet-cell{background:#fff5f5!important}
+.exam-score{background:#d92d20!important;color:#fff!important;font-size:10px!important;font-weight:900!important;cursor:not-allowed!important}

@@ -1,6 +1,6 @@
 /* ===== Leerlingen ===== */
 var modalLearner=$('#modalLearner');
-var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrZip=$('#lrZip'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
+var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrAddress2=$('#lrAddress2'), lrAddress3=$('#lrAddress3'), lrZip=$('#lrZip'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
 var editLearnerId=null;
 
 function round1(n){ return Math.round((Number(n)||0)*10)/10; }
@@ -85,6 +85,8 @@ function openLearnerModal(l){
   lrPhone.value=(l&&l.phone)?l.phone:'';
   lrEmail.value=(l&&l.email)?l.email:'';
   lrAddress.value=(l&&l.address)?l.address:'';
+  if(lrAddress2) lrAddress2.value=(l&&l.address2)?l.address2:'';
+  if(lrAddress3) lrAddress3.value=(l&&l.address3)?l.address3:'';
   lrZip.value=(l&&l.zip)?l.zip:'';
   lrRelation.value=(l&&l.relationNumber)?l.relationNumber:'';
   lrSource.value=(l&&l.source)?l.source:'own';
@@ -320,6 +322,8 @@ async function saveLearner(){
   var phone=lrPhone.value.trim();
   var email=lrEmail.value.trim();
   var address=(lrAddress.value||'').trim();
+  var address2=(lrAddress2&&lrAddress2.value||'').trim();
+  var address3=(lrAddress3&&lrAddress3.value||'').trim();
   var zip=(lrZip.value||'').trim();
   var avg=parseInt(lrAvg.value,10);
   var relationNumber=(lrRelation.value||'').trim();
@@ -346,11 +350,11 @@ async function saveLearner(){
   if(editLearnerId){
   var i=learners.findIndex(function(x){return x.id===editLearnerId});
   if(i>=0){
-    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
+    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
   }
   toast('Bijgewerkt');
 }else{
-  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
+  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
   toast('Toegevoegd');
 }
 
@@ -834,6 +838,9 @@ function renderSheet(){
 
   var datesWindow=datesAsc.slice(-51);
   var datesDisplay=datesWindow.slice().reverse();
+  function examForDate(d){
+    return lessons.find(function(ev){return ev.learnerId===lid && ev.date===d && ev.type==='exam';}) || null;
+  }
 
   function lessonNumberForDate(d){
     var wi=datesWindow.indexOf(d);
@@ -848,8 +855,9 @@ function renderSheet(){
   for(var i=0;i<51;i++){
     var d=datesDisplay[i]||'';
     var nr=d?lessonNumberForDate(d):'';
-    var label=d?('<div>Les '+nr+'<small>'+d+'</small></div>'):('<div>—<small>&nbsp;</small></div>');
-    html+='<div class="col-header">'+label+'</div>';
+    var exam=d?examForDate(d):null;
+    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+d+'</small></div>'):('<div>Les '+nr+'<small>'+d+'</small></div>')):('<div>—<small>&nbsp;</small></div>');
+    html+='<div class="col-header'+(exam?' exam-col-header':'')+'">'+label+'</div>';
   }
   html+='</div></div>';
 
@@ -868,9 +876,11 @@ function renderSheet(){
       html+='<div class="sheet-cell part-label module-row" data-mod-id="'+escapeHtml(mid)+'"><span class="part-id" title="ID: '+escapeHtml(String(p.id))+'">'+escapeHtml(disp+'.')+'</span> '+escapeHtml(p.t||'')+'</div>';
       for(i=0;i<51;i++){
         var date=datesDisplay[i]||'';
-        var s=date?scoreGet(lid,p.id,date):null;
-        var clickable=!!date && (historicalMode || i===0);
-        html+='<div class="sheet-cell module-cell" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(s?cellClass(s):'')+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+'>'+(s!==null?s:'')+'</div></div>';
+        var exam=date?examForDate(date):null;
+        var s=(date&&!exam)?scoreGet(lid,p.id,date):null;
+        var clickable=!!date && !exam && (historicalMode || i===0);
+        var scoreText=exam?'EX':(s!==null?s:'');
+        html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score ':((s?cellClass(s):'')))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?'Praktijkexamen – geen scores invoeren':'')+'">'+scoreText+'</div></div>';
       }
     });
   });

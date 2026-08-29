@@ -1311,15 +1311,20 @@ function saveSettingsTab(){
       $all('.tab-btn').forEach(function(b){ b.addEventListener('click', function(){ switchTab(b.getAttribute('data-tab')); }); });
 
       // les-modal
-      var useAddr=$('#nlUseAddr');
-      if(useAddr) useAddr.onclick=function(){
-        try{
-          var lid=$('#nlLearner')?$('#nlLearner').value:'';
-          var st=learners.find(function(x){return x.id===lid});
-          var pp=$('#nlPickup');
-          if(pp) pp.value = (st && st.address)?st.address:'';
-        }catch(e){}
-      };
+      function bindPickupButton(sel,field){
+        var b=$(sel); if(!b) return;
+        b.onclick=function(){
+          try{
+            var lid=$('#nlLearner')?$('#nlLearner').value:'';
+            var st=learners.find(function(x){return x.id===lid});
+            var pp=$('#nlPickup');
+            if(pp) pp.value=(st&&st[field])?st[field]:'';
+          }catch(e){}
+        };
+      }
+      bindPickupButton('#nlUseAddr','address');
+      bindPickupButton('#nlUseAddr2','address2');
+      bindPickupButton('#nlUseAddr3','address3');
 
       $('#openNewLesson').addEventListener('click', function(){ openLessonModal(null); });
       $('#nlCancel').addEventListener('click', function(){ closeLessonModal(); });
@@ -1360,6 +1365,27 @@ function saveSettingsTab(){
           if(window.currentLearnerInvoiceId) openLearnerInvoicesModal(window.currentLearnerInvoiceId);
         }
       });
+
+
+      // instelbare volgorde van lesduren
+      var durSetting=$('#durationOrderSetting');
+      if(durSetting) durSetting.value=getDurationOrder().join(',');
+      var settingsSave=$('#settingsSaveBtn');
+      if(settingsSave){
+        settingsSave.addEventListener('click', function(){
+          if(!durSetting) return;
+          var vals=(durSetting.value||'').split(/[,;\s]+/).filter(Boolean).map(function(x){return parseInt(x,10);});
+          var clean=[],seen={};
+          vals.forEach(function(m){
+            var ok=(m===50||m===100)||(m>=60&&m<=480&&m%30===0);
+            if(ok&&!seen[m]){seen[m]=1;clean.push(m);}
+          });
+          if(clean.length){
+            store.write(DURATION_ORDER_KEY,clean);
+            durSetting.value=getDurationOrder().join(',');
+          }
+        });
+      }
 
       // backup
       $('#btnExport').addEventListener('click', exportBackup);

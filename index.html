@@ -389,6 +389,11 @@ Reminder rijles: {date} om {time} (tot {endTime}).
 {note}
 Tot dan!" rows="7"></textarea>
 </div>
+<div class="card" style="margin-top:14px">
+<h3 style="margin-top:0">Volgorde lesduren</h3>
+<p class="small">Zet de minuten in de volgorde waarin je ze in keuzelijsten wilt zien. 50 en 100 minuten blijven beschikbaar maar staan standaard onderaan.</p>
+<input class="input" id="durationOrderSetting" placeholder="Bijv. 90,60,120,150,180,50,100"/>
+</div>
 <div class="toolbar" style="margin-top:14px">
 <button class="btn btn-primary" id="settingsSaveBtn" type="button">Instellingen opslaan</button>
 </div>
@@ -443,9 +448,11 @@ Tot dan!" rows="7"></textarea>
 <div class="modal-row">
 <div style="grid-column:1 / -1">
 <label class="small">Ophaaladres</label>
-<div style="display:flex; gap:8px">
-<input class="input" id="nlPickup" placeholder="Bijv. Huisadres (automatisch) of ander ophaalpunt" style="flex:1"/>
-<button class="btn btn-ghost" id="nlUseAddr" type="button">Huisadres</button>
+<div style="display:flex; gap:8px; flex-wrap:wrap">
+<input class="input" id="nlPickup" placeholder="Kies of typ een ophaaladres" style="flex:1;min-width:220px"/>
+<button class="btn btn-ghost" id="nlUseAddr" type="button">Hoofdadres</button>
+<button class="btn btn-ghost" id="nlUseAddr2" type="button">Adres 2</button>
+<button class="btn btn-ghost" id="nlUseAddr3" type="button">Adres 3</button>
 </div>
 <div class="small" style="margin-top:6px">Laat leeg als je geen ophaalregel in de agenda wilt.</div>
 </div>
@@ -476,12 +483,22 @@ Tot dan!" rows="7"></textarea>
 </div>
 <div class="modal-row">
 <div>
-<label class="small">Adres</label>
+<label class="small">Hoofdadres</label>
 <input class="input" id="lrAddress" placeholder="Straat + huisnummer, Plaats"/>
 </div>
 <div>
 <label class="small">Postcode</label>
 <input class="input" id="lrZip" placeholder="1234 AB"/>
+</div>
+</div>
+<div class="modal-row">
+<div>
+<label class="small">Extra ophaaladres 1</label>
+<input class="input" id="lrAddress2" placeholder="Bijv. vader/moeder"/>
+</div>
+<div>
+<label class="small">Extra ophaaladres 2</label>
+<input class="input" id="lrAddress3" placeholder="Bijv. werk"/>
 </div>
 </div>
 <div class="modal-row">
