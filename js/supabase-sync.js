@@ -1,3 +1,4 @@
+// DrivePlan v18.7 aparte woonplaats
 // DrivePlan v18.6 factuurgegevens sync
 
 /* ===== DrivePlan Supabase sync =====
@@ -148,14 +149,7 @@
         phone:String(learner.phone || '').trim() || null,
         address:String(learner.address || '').trim() || null,
         postal_code:String(learner.zip || '').trim() || null,
-        // DrivePlan heeft nu nog geen apart woonplaatsveld.
-        // Bij invoer zoals "Medemblik, Codingshof 11" bewaren we Medemblik alvast als city.
-        city:(function(){
-          var a=String(learner.address || '').trim();
-          if(a.indexOf(',')===-1) return null;
-          var first=a.split(',')[0].trim();
-          return first || null;
-        })(),
+        city:String(learner.city || '').trim() || null,
         active:true
       })
     });

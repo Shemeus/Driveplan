@@ -1,6 +1,6 @@
 /* ===== Leerlingen ===== */
 var modalLearner=$('#modalLearner');
-var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrAddress2=$('#lrAddress2'), lrAddress3=$('#lrAddress3'), lrZip=$('#lrZip'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
+var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrAddress2=$('#lrAddress2'), lrAddress3=$('#lrAddress3'), lrZip=$('#lrZip'), lrCity=$('#lrCity'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
 var editLearnerId=null;
 
 function round1(n){ return Math.round((Number(n)||0)*10)/10; }
@@ -84,10 +84,22 @@ function openLearnerModal(l){
   lrName.value=(l&&l.name)?l.name:'';
   lrPhone.value=(l&&l.phone)?l.phone:'';
   lrEmail.value=(l&&l.email)?l.email:'';
-  lrAddress.value=(l&&l.address)?l.address:'';
+  var savedAddress=(l&&l.address)?String(l.address):'';
+  var savedCity=(l&&l.city)?String(l.city):'';
+
+  // Oude leerlingen kunnen straat + woonplaats nog samen in Hoofdadres hebben.
+  // Als er nog geen apart woonplaatsveld bestaat, splitsen we bij de laatste komma.
+  if(!savedCity && savedAddress.indexOf(',')!==-1){
+    var addrParts=savedAddress.split(',');
+    savedCity=addrParts.pop().trim();
+    savedAddress=addrParts.join(',').trim();
+  }
+
+  lrAddress.value=savedAddress;
   if(lrAddress2) lrAddress2.value=(l&&l.address2)?l.address2:'';
   if(lrAddress3) lrAddress3.value=(l&&l.address3)?l.address3:'';
   lrZip.value=(l&&l.zip)?l.zip:'';
+  if(lrCity) lrCity.value=savedCity;
   lrRelation.value=(l&&l.relationNumber)?l.relationNumber:'';
   lrSource.value=(l&&l.source)?l.source:'own';
   lrNote.value=(l&&l.note)?l.note:'';
@@ -325,6 +337,7 @@ async function saveLearner(){
   var address2=(lrAddress2&&lrAddress2.value||'').trim();
   var address3=(lrAddress3&&lrAddress3.value||'').trim();
   var zip=(lrZip.value||'').trim();
+  var city=(lrCity&&lrCity.value||'').trim();
   var avg=parseInt(lrAvg.value,10);
   var relationNumber=(lrRelation.value||'').trim();
   var source=(lrSource.value||'own').trim();
@@ -350,11 +363,11 @@ async function saveLearner(){
   if(editLearnerId){
   var i=learners.findIndex(function(x){return x.id===editLearnerId});
   if(i>=0){
-    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
+    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
   }
   toast('Bijgewerkt');
 }else{
-  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
+  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
   toast('Toegevoegd');
 }
 

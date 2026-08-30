@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v22';
+const CACHE_NAME = 'driveplan-v23';
 
 const urlsToCache = [
   './',
