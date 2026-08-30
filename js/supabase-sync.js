@@ -144,6 +144,17 @@
         driveplan_learner_id:String(learner.id),
         email:String(learner.email).trim(),
         full_name:String(learner.name || 'Leerling'),
+        phone:String(learner.phone || '').trim() || null,
+        address:String(learner.address || '').trim() || null,
+        postal_code:String(learner.zip || '').trim() || null,
+        // DrivePlan heeft nu nog geen apart woonplaatsveld.
+        // Bij invoer zoals "Medemblik, Codingshof 11" bewaren we Medemblik alvast als city.
+        city:(function(){
+          var a=String(learner.address || '').trim();
+          if(a.indexOf(',')===-1) return null;
+          var first=a.split(',')[0].trim();
+          return first || null;
+        })(),
         active:true
       })
     });
