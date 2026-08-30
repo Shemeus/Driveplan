@@ -1,3 +1,4 @@
+// DrivePlan v18.6 factuurgegevens sync
 
 /* ===== DrivePlan Supabase sync =====
    Alleen publishable clientgegevens. Beveiliging loopt via Supabase Auth + RLS.
