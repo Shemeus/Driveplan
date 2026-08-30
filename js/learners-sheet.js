@@ -361,6 +361,16 @@ async function saveLearner(){
 store.write(K.learners,learners);
 await saveAppStateToCloud();
 
+// Een nieuw of gewijzigd e-mailadres moet direct beschikbaar zijn voor
+// DriveFactuur/DrivePortal. Wacht daarom niet alleen op de achtergrondtimer.
+if(typeof window.syncDrivePortalNow === 'function'){
+  try{
+    await window.syncDrivePortalNow(false);
+  }catch(portalSyncErr){
+    console.warn('Leerling direct naar DrivePortal synchroniseren mislukt', portalSyncErr);
+  }
+}
+
 rebuildLearnerOptions();
 renderLearners();
 renderWeek();
