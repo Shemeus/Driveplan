@@ -361,13 +361,18 @@ async function saveLearner(){
 store.write(K.learners,learners);
 await saveAppStateToCloud();
 
-// Een nieuw of gewijzigd e-mailadres moet direct beschikbaar zijn voor
-// DriveFactuur/DrivePortal. Wacht daarom niet alleen op de achtergrondtimer.
-if(typeof window.syncDrivePortalNow === 'function'){
+// Heeft deze leerling een e-mailadres, controleer de DrivePortal-sync meteen zichtbaar.
+// Zo weet je na Opslaan direct of de leerling ook voor DriveFactuur/DrivePortal beschikbaar is.
+if(email && typeof window.syncDrivePortalNow === 'function'){
   try{
-    await window.syncDrivePortalNow(false);
+    // store.write plant al een achtergrond-sync in. Geef die eerst kort de tijd,
+    // daarna voert de zichtbare sync zo nodig nogmaals de volledige update uit.
+    await new Promise(function(resolve){ setTimeout(resolve, 1400); });
+    await window.syncDrivePortalNow(true);
   }catch(portalSyncErr){
     console.warn('Leerling direct naar DrivePortal synchroniseren mislukt', portalSyncErr);
+    alert('Leerling is wel bijgewerkt in DrivePlan, maar DrivePortal synchroniseren gaf een fout:\n\n'+
+      (portalSyncErr && portalSyncErr.message ? portalSyncErr.message : String(portalSyncErr)));
   }
 }
 

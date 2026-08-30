@@ -251,7 +251,17 @@
   async function syncDrivePortalNow(manual){
     if(dpPortalSyncBusy){
       setPortalSyncStatus('Portaal sync is al bezig…');
-      return false;
+      if(!manual) return false;
+
+      // Bij een handmatige/zichtbare controle wachten we even op de lopende sync
+      // en voeren we daarna nogmaals een volledige sync uit.
+      for(var busyWait=0; busyWait<40 && dpPortalSyncBusy; busyWait++){
+        await new Promise(function(resolve){ setTimeout(resolve, 150); });
+      }
+      if(dpPortalSyncBusy){
+        alert('DrivePortal synchronisatie is nog bezig. Probeer het over een paar seconden opnieuw.');
+        return false;
+      }
     }
     if(!dpSession){
       setPortalSyncStatus('Niet ingelogd — portaal niet bijgewerkt');
