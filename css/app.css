@@ -510,3 +510,9 @@ body.modal-open{overflow:hidden;touch-action:none}
 .agenda-date-head{font:inherit;color:inherit;background:transparent;border:0;width:100%;cursor:pointer}
 .agenda-date-head:hover{text-decoration:underline}
 .agenda-date-head:focus-visible{outline:none;box-shadow:inset 0 0 0 2px currentColor;border-radius:8px}
+
+/* v18.11 — proefles zichtbaar op leskaart, maar telt niet mee */
+.trial-col-header{background:#e8f8ee!important;color:#18723a!important}
+.trial-head{font-weight:900;color:#18723a}.trial-head small{display:block;color:#4d8d63!important}
+.trial-sheet-cell{background:#f1fbf4!important}
+.trial-score{background:#27a857!important;color:#fff!important;cursor:not-allowed!important}

@@ -878,6 +878,9 @@ function renderSheet(){
   function examForDate(d){
     return lessons.find(function(ev){return ev.learnerId===lid && ev.date===d && ev.type==='exam';}) || null;
   }
+  function trialForDate(d){
+    return lessons.find(function(ev){return ev.learnerId===lid && ev.date===d && ev.type==='trial';}) || null;
+  }
 
   function lessonNumberForDate(d){
     var li=lessonDatesAsc.indexOf(d);
@@ -892,8 +895,9 @@ function renderSheet(){
     var d=datesDisplay[i]||'';
     var nr=d?lessonNumberForDate(d):'';
     var exam=d?examForDate(d):null;
-    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+d+'</small></div>'):('<div>Les '+nr+'<small>'+d+'</small></div>')):('<div>—<small>&nbsp;</small></div>');
-    html+='<div class="col-header'+(exam?' exam-col-header':'')+'">'+label+'</div>';
+    var trial=d?trialForDate(d):null;
+    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+d+'</small></div>'):(trial?('<div class="trial-head">PROEFLES<small>'+d+'</small></div>'):('<div>Les '+nr+'<small>'+d+'</small></div>'))):('<div>—<small>&nbsp;</small></div>');
+    html+='<div class="col-header'+(exam?' exam-col-header':(trial?' trial-col-header':''))+'">'+label+'</div>';
   }
   html+='</div></div>';
 
@@ -913,10 +917,14 @@ function renderSheet(){
       for(i=0;i<51;i++){
         var date=datesDisplay[i]||'';
         var exam=date?examForDate(date):null;
-        var s=(date&&!exam)?scoreGet(lid,p.id,date):null;
-        var clickable=!!date && !exam && (historicalMode || i===0);
-        var scoreText=exam?'':(s!==null?s:'');
-        html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score ':((s?cellClass(s):'')))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?'Praktijkexamen – geen scores invoeren':'')+'">'+scoreText+'</div></div>';
+        var trial=date?trialForDate(date):null;
+        var s=(date&&!exam&&!trial)?scoreGet(lid,p.id,date):null;
+        var clickable=!!date && !exam && !trial && (historicalMode || i===0);
+        var scoreText=(exam||trial)?'':(s!==null?s:'');
+        var specialCell=exam?' exam-sheet-cell':(trial?' trial-sheet-cell':'');
+        var specialScore=exam?'exam-score ':(trial?'trial-score ':'');
+        var specialTitle=exam?'Praktijkexamen – geen scores invoeren':(trial?'Proefles – telt niet mee als lesuur':'');
+        html+='<div class="sheet-cell module-cell'+specialCell+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+specialScore+((!exam&&!trial&&s)?cellClass(s):'')+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+specialTitle+'">'+scoreText+'</div></div>';
       }
     });
   });

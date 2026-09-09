@@ -2,9 +2,9 @@
 function datesAscForLearner(lid){
   var uniq={};
   lessons.forEach(function(ev){
-    // Proeflessen en privé-afspraken horen niet op de leskaart en tellen
-    // daarom ook niet mee voor de voortgang. Examens blijven wel zichtbaar.
-    if(ev.learnerId===lid && ev.date && (ev.type==='lesson' || ev.type==='exam')) uniq[ev.date]=true;
+    // Proeflessen blijven zichtbaar op de leskaart als historisch moment, maar
+    // tellen niet mee als lesuur. Privé-afspraken horen niet op de leskaart.
+    if(ev.learnerId===lid && ev.date && (ev.type==='lesson' || ev.type==='exam' || ev.type==='trial')) uniq[ev.date]=true;
   });
   return Object.keys(uniq).sort();
 }
