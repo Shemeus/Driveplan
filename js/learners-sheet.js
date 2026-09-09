@@ -16,7 +16,7 @@ function learnerConsumedPackageLessons(lid, pkg){
   var baseMinutes = Number(pkg.lessonMinutes||60) || 60;
   var today = isoToday();
   var totalMinutes = lessons.filter(function(ev){
-    return ev.learnerId===lid && ev.type==='lesson' && ev.date && ev.date<=today;
+    return ev.learnerId===lid && (ev.type==='lesson' || ev.type==='exam') && ev.date && ev.date<=today;
   }).reduce(function(sum, ev){
     return sum + (Number(ev.duration||0)||0);
   }, 0);
@@ -820,11 +820,12 @@ function renderSheet(){
 
   var datesAsc=datesAscForLearner(lid);
 
-  // Alleen echte rijlessen tellen mee als les/uur. Een proefles, examen of
-  // privé-afspraak mag het lestegoed en de leskaartstatistiek niet verhogen.
+  // Proeflessen zijn gratis en tellen niet mee. Gewone rijlessen en examens
+  // tellen wél mee; zo blijft de voorbereidingstijd bij een examen optioneel
+  // via de gekozen duur (bijv. 60 of 90 minuten). Privé telt niet mee.
   var lessonDatesMap={};
   var lessonEvents = lessons.filter(function(ev){
-    if(ev.learnerId!==lid || !ev.date || ev.type!=='lesson') return false;
+    if(ev.learnerId!==lid || !ev.date || (ev.type!=='lesson' && ev.type!=='exam')) return false;
     lessonDatesMap[ev.date]=true;
     return true;
   });
@@ -851,11 +852,15 @@ function renderSheet(){
     var rowsHTML = '';
     (curriculum.modules||[]).forEach(function(mod, mi){
       var parts=(mod.parts||[]);
-      var done=0;
+      // Voortgang is gebaseerd op het niveau van de laatste score (1-8),
+      // niet op alleen het feit dat een onderdeel ooit is ingevuld.
+      // Daardoor geeft 'hele les = 1' ongeveer 13% en niet 100%.
+      var scoreSum=0;
       for(var j=0;j<parts.length;j++){
-        if(lastScoreForPart(parts[j].id)!==null) done++;
+        var sv=lastScoreForPart(parts[j].id);
+        if(typeof sv==='number' && !isNaN(sv)) scoreSum += Math.max(0, Math.min(8, sv));
       }
-      var pct = parts.length ? Math.round((done/parts.length)*100) : 0;
+      var pct = parts.length ? Math.round((scoreSum/(parts.length*8))*100) : 0;
       var title = (mod.label||('Module '+(mi+1)));
       rowsHTML += ''
         + '<div class="mp-row" title="'+escapeHtml(title)+'">'
