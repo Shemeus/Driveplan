@@ -819,14 +819,18 @@ function renderSheet(){
   var avg=learnerObj? (typeof learnerObj.avgMinutes==='number'?learnerObj.avgMinutes:100) : 100;
 
   var datesAsc=datesAscForLearner(lid);
-  var total=datesAsc.length;
-  // Gebruik voor het urentotaal de WERKELIJKE duur van de agenda-afspraken.
-  // Voorheen werd 'standaard lesduur × aantal lesdatums' gebruikt. Daardoor
-  // veranderde het urentotaal niet wanneer een bestaande les van bv. 60 naar
-  // 120 minuten werd aangepast.
-  var actualMinutes = lessons.filter(function(ev){
-    return ev.learnerId===lid && ev.date;
-  }).reduce(function(sum, ev){
+
+  // Alleen echte rijlessen tellen mee als les/uur. Een proefles, examen of
+  // privé-afspraak mag het lestegoed en de leskaartstatistiek niet verhogen.
+  var lessonDatesMap={};
+  var lessonEvents = lessons.filter(function(ev){
+    if(ev.learnerId!==lid || !ev.date || ev.type!=='lesson') return false;
+    lessonDatesMap[ev.date]=true;
+    return true;
+  });
+  var lessonDatesAsc=Object.keys(lessonDatesMap).sort();
+  var total=lessonDatesAsc.length;
+  var actualMinutes = lessonEvents.reduce(function(sum, ev){
     return sum + (Number(ev.duration||0)||0);
   }, 0);
   var hours=Math.round((actualMinutes/60)*10)/10;
@@ -871,9 +875,8 @@ function renderSheet(){
   }
 
   function lessonNumberForDate(d){
-    var wi=datesWindow.indexOf(d);
-    if(wi<0) return '';
-    return (total - (datesWindow.length - 1 - wi));
+    var li=lessonDatesAsc.indexOf(d);
+    return li>=0 ? (li+1) : '';
   }
 
   var el=$('#sheet');
@@ -907,7 +910,7 @@ function renderSheet(){
         var exam=date?examForDate(date):null;
         var s=(date&&!exam)?scoreGet(lid,p.id,date):null;
         var clickable=!!date && !exam && (historicalMode || i===0);
-        var scoreText=exam?'EX':(s!==null?s:'');
+        var scoreText=exam?'':(s!==null?s:'');
         html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score ':((s?cellClass(s):'')))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?'Praktijkexamen – geen scores invoeren':'')+'">'+scoreText+'</div></div>';
       }
     });
