@@ -516,3 +516,5 @@ body.modal-open{overflow:hidden;touch-action:none}
 .trial-head{font-weight:900;color:#18723a}.trial-head small{display:block;color:#4d8d63!important}
 .trial-sheet-cell{background:#f1fbf4!important}
 .trial-score{background:#27a857!important;color:#fff!important;cursor:not-allowed!important}
+
+/* v18.12: forceer nieuwe assetcache zodat proefles-weergave uit v18.11 direct geladen wordt. */
