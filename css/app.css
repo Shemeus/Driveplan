@@ -518,3 +518,11 @@ body.modal-open{overflow:hidden;touch-action:none}
 .trial-score{background:#27a857!important;color:#fff!important;cursor:not-allowed!important}
 
 /* v18.12: forceer nieuwe assetcache zodat proefles-weergave uit v18.11 direct geladen wordt. */
+
+
+/* DrivePlan v18.13 — leerlingstatus */
+.learner-status-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.learner-status-tab.active{background:#eef4ff;border-color:#9db7ea;font-weight:800}
+.learner-status-badge.hold{background:#fff2cc;color:#6f5200;border-color:#f0d16e}
+.learner-status-badge.passed{background:#e7f7ec;color:#166534;border-color:#9bd3aa}
+.learner-status-meta{margin-top:5px}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v18-12-proefles-zichtbaar-cachefix';
+const CACHE_NAME = 'driveplan-v18-13-leerlingstatus';
 
 const urlsToCache = [
   './',

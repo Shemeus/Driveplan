@@ -131,9 +131,14 @@
 <button class="btn btn-primary" id="openNewLearner">+ Nieuwe leerling</button>
 </div>
 </div>
+<div class="learner-status-tabs" id="learnerStatusTabs" style="margin-top:10px">
+<button class="btn btn-ghost learner-status-tab active" type="button" data-learner-status="active">Actief</button>
+<button class="btn btn-ghost learner-status-tab" type="button" data-learner-status="hold">On hold</button>
+<button class="btn btn-ghost learner-status-tab" type="button" data-learner-status="passed">Geslaagd</button>
+</div>
 <div style="margin-top:10px">
 <input autocomplete="off" class="input" id="learnerSearch" placeholder="Zoek leerling...">
-<div class="small" style="margin-top:6px">Tik op een leerling → direct naar leskaart. Gebruik “Bewerken” rechts om gegevens te wijzigen.</div>
+<div class="small" style="margin-top:6px">Tik op een leerling → direct naar leskaart. On hold en geslaagde leerlingen blijven volledig bewaard, maar verschijnen niet bij het plannen van nieuwe lessen.</div>
 </input></div>
 <div class="list" id="learnerList" style="margin-top:10px"></div>
 </div>
@@ -874,8 +879,8 @@ Tot dan!" rows="7"></textarea>
 </div>
 <script src="js/core.js"></script>
 <script src="js/agenda.js"></script>
-<script src="js/learners-sheet.js?v=18.7"></script>
+<script src="js/learners-sheet.js?v=18.13"></script>
 <script src="js/finance-modules-init.js"></script>
-<script src="js/supabase-sync.js?v=18.7"></script>
+<script src="js/supabase-sync.js?v=18.13"></script>
 </body>
 </html>

@@ -259,6 +259,7 @@ async function loadWhoCanHereResults(){
     var matches=[];
 
     learners.forEach(function(l){
+      if(!agendaLearnerIsActive(l)) return;
       var d=map && map[String(l.id)];
       if(!d) return;
       var blocked=(d.exceptions||[]).some(function(ex){return dpExceptionBlocksDate(ex,whoCanHereState.date)});
@@ -410,10 +411,13 @@ var nlToSheet=$('#nlToSheet');
 var nlDelete=$('#nlDelete'), nlTitle=$('#nlTitle');
 var editLessonId=null;
 
+function agendaLearnerIsActive(l){
+  return !l || !l.status || l.status==='active';
+}
 function filterLessonLearners(query){
   query = (query||'').trim().toLowerCase();
   var cur = nlLearner && nlLearner.value ? nlLearner.value : '';
-  var arr = learners.slice().sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'nl');});
+  var arr = learners.filter(function(l){ return agendaLearnerIsActive(l); }).slice().sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'nl');});
 
   if(query){
     var pref = arr.filter(function(l){return (l.name||'').toLowerCase().indexOf(query)===0;});
@@ -468,13 +472,17 @@ function updateEndTime(){
 function rebuildLearnerOptions(){
   filterLessonLearners(nlLearnerSearch ? nlLearnerSearch.value : '');
 
-  var sortedLearners = learners.slice().sort(function(a,b){ return (a.name||'').localeCompare((b.name||''), 'nl'); });
+  var sortedLearners = learners.filter(function(l){ return agendaLearnerIsActive(l); }).slice().sort(function(a,b){ return (a.name||'').localeCompare((b.name||''), 'nl'); });
+  var allLearners = learners.slice().sort(function(a,b){ return (a.name||'').localeCompare((b.name||''), 'nl'); });
   var keep=$('#sheetLearner').value;
-  $('#sheetLearner').innerHTML=sortedLearners.map(function(l){return '<option value="'+l.id+'">'+escapeHtml(l.name)+'</option>'}).join('');
-  if(sortedLearners.some(function(l){return l.id===selectedLearnerId})) $('#sheetLearner').value=selectedLearnerId;
-  else if(sortedLearners.some(function(l){return l.id===keep})) $('#sheetLearner').value=keep;
+  $('#sheetLearner').innerHTML=allLearners.map(function(l){
+    var suffix = (l.status==='hold') ? ' — on hold' : (l.status==='passed' ? ' — geslaagd' : '');
+    return '<option value="'+l.id+'">'+escapeHtml((l.name||'')+suffix)+'</option>';
+  }).join('');
+  if(allLearners.some(function(l){return l.id===selectedLearnerId})) $('#sheetLearner').value=selectedLearnerId;
+  else if(allLearners.some(function(l){return l.id===keep})) $('#sheetLearner').value=keep;
 
-  $('#invLearner').innerHTML = '<option value="">-- kies leerling --</option>' + sortedLearners.map(function(l){return '<option value="'+l.id+'">'+escapeHtml(l.name)+'</option>'}).join('');
+  $('#invLearner').innerHTML = '<option value="">-- kies leerling --</option>' + allLearners.map(function(l){return '<option value="'+l.id+'">'+escapeHtml(l.name)+'</option>'}).join('');
   $('#invLearner').value = '';
 
   $('#historicalToggle').checked = !!historicalMode;
@@ -492,7 +500,11 @@ function openLessonModal(id){
     nlTitle.textContent='Bewerken';
     nlDelete.style.display='inline-block';
 
-    nlLearner.value = ev.learnerId || (learners[0]?learners[0].id:'');
+    var editLearnerObj=learners.find(function(l){return l.id===ev.learnerId});
+    if(editLearnerObj && !agendaLearnerIsActive(editLearnerObj) && !Array.from(nlLearner.options).some(function(o){return o.value===editLearnerObj.id;})){
+      var opt=document.createElement('option'); opt.value=editLearnerObj.id; opt.textContent=editLearnerObj.name+' — '+(editLearnerObj.status==='passed'?'geslaagd':'on hold'); nlLearner.appendChild(opt);
+    }
+    nlLearner.value = ev.learnerId || '';
     nlDate.value = ev.date || isoToday();
     setNlTimeFromStr(ev.time || suggestNextTime());
     nlDuration.innerHTML = buildDurationOptions(normalizeDuration(ev.duration||50));
@@ -504,8 +516,8 @@ function openLessonModal(id){
     nlTitle.textContent='Nieuwe';
     nlDelete.style.display='none';
 
-    if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId})) nlLearner.value=selectedLearnerId;
-    else nlLearner.value=(learners[0]?learners[0].id:'');
+    if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId && agendaLearnerIsActive(l)})) nlLearner.value=selectedLearnerId;
+    else { var firstActive=learners.find(function(l){return agendaLearnerIsActive(l)}); nlLearner.value=(firstActive?firstActive.id:''); }
 
     nlDate.value=isoFromDateLocal(weekStart);
     setNlTimeFromStr(suggestNextTime());

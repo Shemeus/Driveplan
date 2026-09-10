@@ -363,11 +363,11 @@ async function saveLearner(){
   if(editLearnerId){
   var i=learners.findIndex(function(x){return x.id===editLearnerId});
   if(i>=0){
-    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
+    learners[i]=Object.assign({}, learners[i], {id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
   }
   toast('Bijgewerkt');
 }else{
-  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
+  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note,status:'active'});
   toast('Toegevoegd');
 }
 
@@ -437,6 +437,65 @@ async function deleteLearner(id){
   renderSheet();
   toast('Leerling verwijderd');
 }
+/* ===== Leerlingstatus: actief / on hold / geslaagd ===== */
+var learnerStatusFilter = 'active';
+
+function learnerStatus(l){
+  var s = (l && l.status) ? String(l.status) : 'active';
+  return (s==='hold' || s==='passed') ? s : 'active';
+}
+function learnerStatusLabel(s){
+  if(s==='hold') return 'On hold';
+  if(s==='passed') return 'Geslaagd';
+  return 'Actief';
+}
+function formatStatusDate(v){
+  if(!v) return '';
+  var p=String(v).slice(0,10).split('-');
+  return p.length===3 ? (p[2]+'-'+p[1]+'-'+p[0]) : String(v);
+}
+function updateLearnerStatusTabs(){
+  var tabs=document.querySelectorAll('[data-learner-status]');
+  tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-learner-status')===learnerStatusFilter); });
+}
+async function setLearnerStatus(id, status){
+  var l=learners.find(function(x){return x.id===id});
+  if(!l) return;
+  status = (status==='hold' || status==='passed') ? status : 'active';
+
+  if(status==='hold') {
+    var holdDate = prompt('Vanaf welke datum staat '+(l.name||'de leerling')+' on hold? (JJJJ-MM-DD)', l.holdSince || isoToday());
+    if(holdDate===null) return;
+    l.status='hold';
+    l.holdSince=(holdDate||isoToday()).trim();
+    l.passedAt=''; l.passedAttempt=''; l.passedLocation='';
+  } else if(status==='passed') {
+    var passedDate = prompt('Datum geslaagd (JJJJ-MM-DD)', l.passedAt || isoToday());
+    if(passedDate===null) return;
+    var attempt = prompt('Hoeveelste examenpoging was dit?', l.passedAttempt || '1');
+    if(attempt===null) return;
+    var location = prompt('Examenlocatie (bijv. Hoorn of Alkmaar)', l.passedLocation || 'Hoorn');
+    if(location===null) return;
+    l.status='passed';
+    l.passedAt=(passedDate||isoToday()).trim();
+    l.passedAttempt=(attempt||'').trim();
+    l.passedLocation=(location||'').trim();
+    l.holdSince='';
+  } else {
+    l.status='active';
+    l.holdSince='';
+    // Geslaagdgegevens blijven bewust bewaard als historie, ook na terugzetten.
+  }
+
+  store.write(K.learners, learners);
+  try{ await saveAppStateToCloud(); }catch(e){ console.warn('Cloud sync leerlingstatus mislukt', e); }
+  rebuildLearnerOptions();
+  renderLearners();
+  renderWeek();
+  renderSheet();
+  toast(status==='active' ? 'Leerling weer actief' : (status==='hold' ? 'Leerling op hold gezet' : 'Leerling naar geslaagd verplaatst'));
+}
+
 /* renderLearners */
 function renderLearners(){
   var list=$('#learnerList');
@@ -445,6 +504,9 @@ function renderLearners(){
   var arr = learners.slice().sort(function(a,b){
     return (a.name||'').localeCompare((b.name||''), 'nl');
   });
+
+  arr = arr.filter(function(l){ return learnerStatus(l)===learnerStatusFilter; });
+  updateLearnerStatusTabs();
 
   if(q){
     arr = arr.filter(function(l){
@@ -457,7 +519,7 @@ function renderLearners(){
   }
 
   if(!arr.length){
-    list.innerHTML = '<div class="small">Geen leerlingen gevonden.</div>';
+    list.innerHTML = '<div class="small">Geen '+escapeHtml(learnerStatusLabel(learnerStatusFilter).toLowerCase())+' leerlingen gevonden.</div>';
     return;
   }
 
@@ -488,8 +550,10 @@ function renderLearners(){
     html +=
       '<div class="row click-row" data-id="'+l.id+'">'+
         '<div>'+
-          '<h4>'+escapeHtml(l.name)+' <span class="tag '+sourceTagClass(source)+'">'+escapeHtml(sourceLabel(source))+'</span></h4>'+
+          '<h4>'+escapeHtml(l.name)+' <span class="tag '+sourceTagClass(source)+'">'+escapeHtml(sourceLabel(source))+'</span> '+(learnerStatus(l)!=='active'?'<span class="tag learner-status-badge '+learnerStatus(l)+'">'+escapeHtml(learnerStatusLabel(learnerStatus(l)))+'</span>':'')+'</h4>'+
           '<div class="meta">📞 '+escapeHtml(l.phone||'-')+' • ✉️ '+escapeHtml(l.email||'-')+' • Standaard: '+avg+' min</div>'+
+          (learnerStatus(l)==='hold' && l.holdSince ? '<div class="small learner-status-meta">⏸ On hold sinds <b>'+escapeHtml(formatStatusDate(l.holdSince))+'</b></div>' : '')+
+          (learnerStatus(l)==='passed' ? '<div class="small learner-status-meta">🏁 Geslaagd'+(l.passedAt?' op <b>'+escapeHtml(formatStatusDate(l.passedAt))+'</b>':'')+(l.passedAttempt?' • <b>'+escapeHtml(String(l.passedAttempt))+'e</b> poging':'')+(l.passedLocation?' • '+escapeHtml(l.passedLocation):'')+'</div>' : '')+
           (l.relationNumber?'<div class="small" style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">CBR relatienummer: <b>'+escapeHtml(l.relationNumber)+'</b> <button class="btn btn-ghost" data-action="copyrelation" type="button">Kopieer</button></div>':'')+
           packageLine+
           (l.note?'<div class="small" style="margin-top:6px">'+escapeHtml(l.note)+'</div>':'')+
@@ -499,6 +563,7 @@ function renderLearners(){
           ((l.email||'').trim() ? '<button class="btn btn-ghost" data-action="portalinvite">🚘 DrivePortal uitnodigen</button><button class="btn btn-ghost" data-action="portalcopy">Link kopiëren</button>' : '')+
           '<button class="btn btn-ghost" data-action="sheet">Leskaart</button>'+
           '<button class="btn btn-ghost" data-action="edit">Bewerken</button>'+
+          (learnerStatus(l)==='active' ? '<button class="btn btn-ghost" data-action="hold">⏸ On hold</button><button class="btn btn-ghost" data-action="passed">🏁 Geslaagd</button>' : '<button class="btn btn-ghost" data-action="activate">↩ Actief zetten</button>')+
           '<button class="btn btn-danger" data-action="delete">Verwijderen</button>'+
         '</div>'+
       '</div>';
@@ -598,6 +663,16 @@ function openSheetFor(lid){
   else if(typeof renderSheet === 'function') renderSheet();
 }
 
+var learnerStatusTabsEl = document.getElementById('learnerStatusTabs');
+if(learnerStatusTabsEl){
+  learnerStatusTabsEl.addEventListener('click', function(e){
+    var btn=e.target.closest('[data-learner-status]');
+    if(!btn) return;
+    learnerStatusFilter=btn.getAttribute('data-learner-status') || 'active';
+    renderLearners();
+  });
+}
+
 $('#learnerList').addEventListener('click', function(e){
   var btn = e.target.closest('button[data-action]');
   var row = e.target.closest('.row[data-id]');
@@ -630,6 +705,12 @@ $('#learnerList').addEventListener('click', function(e){
     }else if(action==='edit'){
       var l=learners.find(function(x){return x.id===id});
       if(l) openLearnerModal(l);
+    }else if(action==='hold'){
+      setLearnerStatus(id,'hold');
+    }else if(action==='passed'){
+      setLearnerStatus(id,'passed');
+    }else if(action==='activate'){
+      setLearnerStatus(id,'active');
     }else if(action==='delete'){
       deleteLearner(id);
     }else if(action==='invoices'){
