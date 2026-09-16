@@ -756,7 +756,7 @@ function renderRentalWeek(){
     return ''
       + '<div class="rental-row">'
       +   '<div class="left">'
-      +     '<div><b>' + escapeHtml(ev.date) + ' • ' + escapeHtml(ev.time||'') + '</b> • ' + escapeHtml(l.name||'Onbekend') + '</div>'
+      +     '<div><b>' + escapeHtml((function(v){var p=String(v||'').slice(0,10).split('-');return p.length===3?(p[2]+'-'+p[1]+'-'+p[0]):String(v||'');})(ev.date)) + ' • ' + escapeHtml(ev.time||'') + '</b> • ' + escapeHtml(l.name||'Onbekend') + '</div>'
       +     '<div class="small">' + escapeHtml((ev.type==='trial'?'Proefles':'Rijles')) + ' • ' + escapeHtml(String(ev.duration||0)) + ' min</div>'
       +   '</div>'
       +   '<div class="right">'

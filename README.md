@@ -1,3 +1,10 @@
+# DrivePlan v18.14 — Nederlandse datums & leskaartbediening
+
+- Geslaagd/on-hold datum invoeren als DD-MM-JJJJ.
+- Zichtbare lesdatums als DD-MM-JJJJ.
+- 'Vul hele module' sluit de scorepopup direct.
+- 'Vul hele les' vult alleen module 1 t/m 3; module 4 blijft handmatig.
+
 # DrivePlan v18.13 — Actief / On hold / Geslaagd
 
 Nieuw:

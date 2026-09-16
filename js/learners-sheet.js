@@ -454,6 +454,18 @@ function formatStatusDate(v){
   var p=String(v).slice(0,10).split('-');
   return p.length===3 ? (p[2]+'-'+p[1]+'-'+p[0]) : String(v);
 }
+function statusDateToInput(v){
+  return formatStatusDate(v || isoToday());
+}
+function parseDutchStatusDate(v){
+  var raw=String(v||'').trim();
+  var m=raw.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+  if(!m) return null;
+  var d=parseInt(m[1],10), mo=parseInt(m[2],10), y=parseInt(m[3],10);
+  var dt=new Date(y,mo-1,d);
+  if(dt.getFullYear()!==y || dt.getMonth()!==mo-1 || dt.getDate()!==d) return null;
+  return String(y).padStart(4,'0')+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
 function updateLearnerStatusTabs(){
   var tabs=document.querySelectorAll('[data-learner-status]');
   tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-learner-status')===learnerStatusFilter); });
@@ -464,20 +476,24 @@ async function setLearnerStatus(id, status){
   status = (status==='hold' || status==='passed') ? status : 'active';
 
   if(status==='hold') {
-    var holdDate = prompt('Vanaf welke datum staat '+(l.name||'de leerling')+' on hold? (JJJJ-MM-DD)', l.holdSince || isoToday());
+    var holdDate = prompt('Vanaf welke datum staat '+(l.name||'de leerling')+' on hold? (DD-MM-JJJJ)', statusDateToInput(l.holdSince));
     if(holdDate===null) return;
+    var holdIso=parseDutchStatusDate(holdDate);
+    if(!holdIso){ alert('Vul de datum in als dag-maand-jaar, bijvoorbeeld 16-09-2026.'); return; }
     l.status='hold';
-    l.holdSince=(holdDate||isoToday()).trim();
+    l.holdSince=holdIso;
     l.passedAt=''; l.passedAttempt=''; l.passedLocation='';
   } else if(status==='passed') {
-    var passedDate = prompt('Datum geslaagd (JJJJ-MM-DD)', l.passedAt || isoToday());
+    var passedDate = prompt('Datum geslaagd (DD-MM-JJJJ)', statusDateToInput(l.passedAt));
     if(passedDate===null) return;
+    var passedIso=parseDutchStatusDate(passedDate);
+    if(!passedIso){ alert('Vul de datum in als dag-maand-jaar, bijvoorbeeld 16-09-2026.'); return; }
     var attempt = prompt('Hoeveelste examenpoging was dit?', l.passedAttempt || '1');
     if(attempt===null) return;
     var location = prompt('Examenlocatie (bijv. Hoorn of Alkmaar)', l.passedLocation || 'Hoorn');
     if(location===null) return;
     l.status='passed';
-    l.passedAt=(passedDate||isoToday()).trim();
+    l.passedAt=passedIso;
     l.passedAttempt=(attempt||'').trim();
     l.passedLocation=(location||'').trim();
     l.holdSince='';
@@ -838,12 +854,19 @@ function openScoreModal(ctx){
     if(!mod){ alert('Module niet gevonden.'); return; }
     var pids = (mod.parts||[]).map(function(p,pi){return p.id;});
     applyScoreToPidList(ctx.lid, ctx.date, pids, chosenScore);
+    closeScoreModal();
   };
 
   scoreFillLessonBtn.onclick=function(){
     if(!chosenScore){ alert('Kies eerst een score (1–8).'); return; }
-    var pids = allPartsFlat().map(function(p,pi){return p.id;});
+    // 'Vul hele les' vult alleen module 1 t/m 3. Module 4 (bijzondere
+    // verrichtingen) blijft bewust handmatig, omdat niet elke oefening
+    // tijdens iedere les wordt uitgevoerd.
+    var pids = (curriculum.modules||[]).slice(0,3).reduce(function(out,mod){
+      return out.concat((mod.parts||[]).map(function(p){ return p.id; }));
+    },[]);
     applyScoreToPidList(ctx.lid, ctx.date, pids, chosenScore);
+    closeScoreModal();
   };
 
   scoreCancelBtn.onclick=closeScoreModal;
@@ -977,7 +1000,8 @@ function renderSheet(){
     var nr=d?lessonNumberForDate(d):'';
     var exam=d?examForDate(d):null;
     var trial=d?trialForDate(d):null;
-    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+d+'</small></div>'):(trial?('<div class="trial-head">PROEFLES<small>'+d+'</small></div>'):('<div>Les '+nr+'<small>'+d+'</small></div>'))):('<div>—<small>&nbsp;</small></div>');
+    var shownDate=d?formatStatusDate(d):'';
+    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+shownDate+'</small></div>'):(trial?('<div class="trial-head">PROEFLES<small>'+shownDate+'</small></div>'):('<div>Les '+nr+'<small>'+shownDate+'</small></div>'))):('<div>—<small>&nbsp;</small></div>');
     html+='<div class="col-header'+(exam?' exam-col-header':(trial?' trial-col-header':''))+'">'+label+'</div>';
   }
   html+='</div></div>';
