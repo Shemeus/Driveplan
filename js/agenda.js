@@ -307,7 +307,19 @@ async function loadWhoCanHereResults(){
 function renderWeek(){
   var todayISO = isoToday();
   var days=[0,1,2,3,4,5,6].map(function(i){return addDays(weekStart,i)});
-  $('#weekHead').innerHTML='<div></div>'+days.map(function(d){return '<div class="hd">'+fmtHead(d)+'</div>'}).join('');
+  $('#weekHead').innerHTML='<div></div>'+days.map(function(d){
+    return '<div class="hd day-plan-head" data-date="'+isoFromDateLocal(d)+'" title="Afspraak toevoegen op deze dag">'+fmtHead(d)+'</div>';
+  }).join('');
+
+  // Klik op de datum/dagkop: nieuwe afspraak openen met deze datum al ingevuld.
+  Array.prototype.slice.call(document.querySelectorAll('#weekHead .day-plan-head')).forEach(function(head){
+    head.addEventListener('click', function(){
+      var date=head.getAttribute('data-date');
+      openLessonModal(null);
+      if(date) nlDate.value=date;
+      updateEndTime();
+    });
+  });
 
   var body='<div class="time-col">';
   slots.forEach(function(t){ var show = (String(t).slice(3)==='00'); body+='<div class="time-row">'+(show?t:'')+'</div>'; });
@@ -354,12 +366,7 @@ function renderWeek(){
 
     var rows=Math.max(1,Math.ceil((ev.duration||50)/5));
     var el=document.createElement('div');
-    var t = ev.type==='exam' ? 'exam' :
-            ev.type==='ttt' ? 'ttt' :
-            ev.type==='bnor' ? 'bnor' :
-            ev.type==='fear' ? 'fear' :
-            ev.type==='trial' ? 'trial' :
-            ev.type==='private' ? 'private' : 'lesson';
+    var t = ev.type==='exam'?'exam':(ev.type==='ttt'?'ttt':(ev.type==='bnor'?'bnor':(ev.type==='fear'?'fear':(ev.type==='trial'?'trial':(ev.type==='private'?'private':'lesson')))));
     el.className='event '+t + (ev.date < todayISO ? ' past' : '');
     var rlist = col.querySelectorAll('.day-row');
     var topPx = idx * rowH;
@@ -375,12 +382,7 @@ function renderWeek(){
 
     var lobj=learners.find(function(x){return x.id===ev.learnerId});
     var name=lobj?lobj.name:'Onbekend';
-    var label = t==='exam' ? 'PRAKTIJKEXAMEN ' :
-                t==='ttt' ? 'TTT ' :
-                t==='bnor' ? 'BNOR EXAMEN ' :
-                t==='fear' ? 'FAALANGSTEXAMEN ' :
-                t==='trial' ? 'PROEF ' :
-                t==='private' ? 'PRIVÉ ' : '';
+    var label = t==='exam'?'PRAKTIJKEXAMEN ':(t==='ttt'?'TTT ':(t==='bnor'?'BNOR EXAMEN ':(t==='fear'?'FAALANGSTEXAMEN ':(t==='trial'?'PROEF ':(t==='private'?'PRIVÉ ':'')))));
     if(t==='private'){ name='Privé'; }
     var endt = computeEndTimeStr(ev.time, ev.duration||50);
     var timeRange = escapeHtml(ev.time + ' – ' + endt);
@@ -550,7 +552,7 @@ if(nlType) nlType.addEventListener('change', function(){
     nlDuration.innerHTML=buildDurationOptions(90);
     nlDuration.value='90';
   }
-  // BNOR: geen vaste duur; gekozen duur blijft vrij instelbaar.
+  // BNOR houdt de gekozen duur vrij instelbaar.
   updateEndTime();
 });
 

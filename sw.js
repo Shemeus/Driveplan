@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v22-agenda-examentypes';
+const CACHE_NAME = 'driveplan-v25-dagklik-herbouwd';
 
 const urlsToCache = [
   './',

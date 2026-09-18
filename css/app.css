@@ -60,6 +60,8 @@ body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:lin
 .event.ttt{background:#e9d5ff;border-color:#c084fc}
 .event.bnor{background:#d6b08c;border-color:#9a6a43}
 .event.fear{background:#d6ad00;border-color:#a98200}
+.week-head .day-plan-head{cursor:pointer}
+.week-head .day-plan-head:hover{text-decoration:underline}
 .event.trial{background:#dff8e6;border-color:#bde9ca}
 .event.private{background:#ffe3c6;border-color:#ffc48d}
 .event.past{opacity:.7}
