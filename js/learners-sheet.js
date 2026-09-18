@@ -1,6 +1,6 @@
 /* ===== Leerlingen ===== */
 var modalLearner=$('#modalLearner');
-var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrAddress2=$('#lrAddress2'), lrAddress3=$('#lrAddress3'), lrZip=$('#lrZip'), lrCity=$('#lrCity'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
+var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrZip=$('#lrZip'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
 var editLearnerId=null;
 
 function round1(n){ return Math.round((Number(n)||0)*10)/10; }
@@ -16,7 +16,7 @@ function learnerConsumedPackageLessons(lid, pkg){
   var baseMinutes = Number(pkg.lessonMinutes||60) || 60;
   var today = isoToday();
   var totalMinutes = lessons.filter(function(ev){
-    return ev.learnerId===lid && (ev.type==='lesson' || ev.type==='exam') && ev.date && ev.date<=today;
+    return ev.learnerId===lid && ev.type==='lesson' && ev.date && ev.date<=today;
   }).reduce(function(sum, ev){
     return sum + (Number(ev.duration||0)||0);
   }, 0);
@@ -84,22 +84,8 @@ function openLearnerModal(l){
   lrName.value=(l&&l.name)?l.name:'';
   lrPhone.value=(l&&l.phone)?l.phone:'';
   lrEmail.value=(l&&l.email)?l.email:'';
-  var savedAddress=(l&&l.address)?String(l.address):'';
-  var savedCity=(l&&l.city)?String(l.city):'';
-
-  // Oude leerlingen kunnen straat + woonplaats nog samen in Hoofdadres hebben.
-  // Als er nog geen apart woonplaatsveld bestaat, splitsen we bij de laatste komma.
-  if(!savedCity && savedAddress.indexOf(',')!==-1){
-    var addrParts=savedAddress.split(',');
-    savedCity=addrParts.pop().trim();
-    savedAddress=addrParts.join(',').trim();
-  }
-
-  lrAddress.value=savedAddress;
-  if(lrAddress2) lrAddress2.value=(l&&l.address2)?l.address2:'';
-  if(lrAddress3) lrAddress3.value=(l&&l.address3)?l.address3:'';
+  lrAddress.value=(l&&l.address)?l.address:'';
   lrZip.value=(l&&l.zip)?l.zip:'';
-  if(lrCity) lrCity.value=savedCity;
   lrRelation.value=(l&&l.relationNumber)?l.relationNumber:'';
   lrSource.value=(l&&l.source)?l.source:'own';
   lrNote.value=(l&&l.note)?l.note:'';
@@ -334,10 +320,7 @@ async function saveLearner(){
   var phone=lrPhone.value.trim();
   var email=lrEmail.value.trim();
   var address=(lrAddress.value||'').trim();
-  var address2=(lrAddress2&&lrAddress2.value||'').trim();
-  var address3=(lrAddress3&&lrAddress3.value||'').trim();
   var zip=(lrZip.value||'').trim();
-  var city=(lrCity&&lrCity.value||'').trim();
   var avg=parseInt(lrAvg.value,10);
   var relationNumber=(lrRelation.value||'').trim();
   var source=(lrSource.value||'own').trim();
@@ -363,31 +346,16 @@ async function saveLearner(){
   if(editLearnerId){
   var i=learners.findIndex(function(x){return x.id===editLearnerId});
   if(i>=0){
-    learners[i]=Object.assign({}, learners[i], {id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
+    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
   }
   toast('Bijgewerkt');
 }else{
-  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,city:city,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note,status:'active'});
+  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
   toast('Toegevoegd');
 }
 
 store.write(K.learners,learners);
 await saveAppStateToCloud();
-
-// Heeft deze leerling een e-mailadres, controleer de DrivePortal-sync meteen zichtbaar.
-// Zo weet je na Opslaan direct of de leerling ook voor DriveFactuur/DrivePortal beschikbaar is.
-if(email && typeof window.syncDrivePortalNow === 'function'){
-  try{
-    // store.write plant al een achtergrond-sync in. Geef die eerst kort de tijd,
-    // daarna voert de zichtbare sync zo nodig nogmaals de volledige update uit.
-    await new Promise(function(resolve){ setTimeout(resolve, 1400); });
-    await window.syncDrivePortalNow(true);
-  }catch(portalSyncErr){
-    console.warn('Leerling direct naar DrivePortal synchroniseren mislukt', portalSyncErr);
-    alert('Leerling is wel bijgewerkt in DrivePlan, maar DrivePortal synchroniseren gaf een fout:\n\n'+
-      (portalSyncErr && portalSyncErr.message ? portalSyncErr.message : String(portalSyncErr)));
-  }
-}
 
 rebuildLearnerOptions();
 renderLearners();
@@ -437,81 +405,6 @@ async function deleteLearner(id){
   renderSheet();
   toast('Leerling verwijderd');
 }
-/* ===== Leerlingstatus: actief / on hold / geslaagd ===== */
-var learnerStatusFilter = 'active';
-
-function learnerStatus(l){
-  var s = (l && l.status) ? String(l.status) : 'active';
-  return (s==='hold' || s==='passed') ? s : 'active';
-}
-function learnerStatusLabel(s){
-  if(s==='hold') return 'On hold';
-  if(s==='passed') return 'Geslaagd';
-  return 'Actief';
-}
-function formatStatusDate(v){
-  if(!v) return '';
-  var p=String(v).slice(0,10).split('-');
-  return p.length===3 ? (p[2]+'-'+p[1]+'-'+p[0]) : String(v);
-}
-function statusDateToInput(v){
-  return formatStatusDate(v || isoToday());
-}
-function parseDutchStatusDate(v){
-  var raw=String(v||'').trim();
-  var m=raw.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
-  if(!m) return null;
-  var d=parseInt(m[1],10), mo=parseInt(m[2],10), y=parseInt(m[3],10);
-  var dt=new Date(y,mo-1,d);
-  if(dt.getFullYear()!==y || dt.getMonth()!==mo-1 || dt.getDate()!==d) return null;
-  return String(y).padStart(4,'0')+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-}
-function updateLearnerStatusTabs(){
-  var tabs=document.querySelectorAll('[data-learner-status]');
-  tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-learner-status')===learnerStatusFilter); });
-}
-async function setLearnerStatus(id, status){
-  var l=learners.find(function(x){return x.id===id});
-  if(!l) return;
-  status = (status==='hold' || status==='passed') ? status : 'active';
-
-  if(status==='hold') {
-    var holdDate = prompt('Vanaf welke datum staat '+(l.name||'de leerling')+' on hold? (DD-MM-JJJJ)', statusDateToInput(l.holdSince));
-    if(holdDate===null) return;
-    var holdIso=parseDutchStatusDate(holdDate);
-    if(!holdIso){ alert('Vul de datum in als dag-maand-jaar, bijvoorbeeld 16-09-2026.'); return; }
-    l.status='hold';
-    l.holdSince=holdIso;
-    l.passedAt=''; l.passedAttempt=''; l.passedLocation='';
-  } else if(status==='passed') {
-    var passedDate = prompt('Datum geslaagd (DD-MM-JJJJ)', statusDateToInput(l.passedAt));
-    if(passedDate===null) return;
-    var passedIso=parseDutchStatusDate(passedDate);
-    if(!passedIso){ alert('Vul de datum in als dag-maand-jaar, bijvoorbeeld 16-09-2026.'); return; }
-    var attempt = prompt('Hoeveelste examenpoging was dit?', l.passedAttempt || '1');
-    if(attempt===null) return;
-    var location = prompt('Examenlocatie (bijv. Hoorn of Alkmaar)', l.passedLocation || 'Hoorn');
-    if(location===null) return;
-    l.status='passed';
-    l.passedAt=passedIso;
-    l.passedAttempt=(attempt||'').trim();
-    l.passedLocation=(location||'').trim();
-    l.holdSince='';
-  } else {
-    l.status='active';
-    l.holdSince='';
-    // Geslaagdgegevens blijven bewust bewaard als historie, ook na terugzetten.
-  }
-
-  store.write(K.learners, learners);
-  try{ await saveAppStateToCloud(); }catch(e){ console.warn('Cloud sync leerlingstatus mislukt', e); }
-  rebuildLearnerOptions();
-  renderLearners();
-  renderWeek();
-  renderSheet();
-  toast(status==='active' ? 'Leerling weer actief' : (status==='hold' ? 'Leerling op hold gezet' : 'Leerling naar geslaagd verplaatst'));
-}
-
 /* renderLearners */
 function renderLearners(){
   var list=$('#learnerList');
@@ -520,9 +413,6 @@ function renderLearners(){
   var arr = learners.slice().sort(function(a,b){
     return (a.name||'').localeCompare((b.name||''), 'nl');
   });
-
-  arr = arr.filter(function(l){ return learnerStatus(l)===learnerStatusFilter; });
-  updateLearnerStatusTabs();
 
   if(q){
     arr = arr.filter(function(l){
@@ -535,7 +425,7 @@ function renderLearners(){
   }
 
   if(!arr.length){
-    list.innerHTML = '<div class="small">Geen '+escapeHtml(learnerStatusLabel(learnerStatusFilter).toLowerCase())+' leerlingen gevonden.</div>';
+    list.innerHTML = '<div class="small">Geen leerlingen gevonden.</div>';
     return;
   }
 
@@ -566,104 +456,22 @@ function renderLearners(){
     html +=
       '<div class="row click-row" data-id="'+l.id+'">'+
         '<div>'+
-          '<h4>'+escapeHtml(l.name)+' <span class="tag '+sourceTagClass(source)+'">'+escapeHtml(sourceLabel(source))+'</span> '+(learnerStatus(l)!=='active'?'<span class="tag learner-status-badge '+learnerStatus(l)+'">'+escapeHtml(learnerStatusLabel(learnerStatus(l)))+'</span>':'')+'</h4>'+
+          '<h4>'+escapeHtml(l.name)+' <span class="tag '+sourceTagClass(source)+'">'+escapeHtml(sourceLabel(source))+'</span></h4>'+
           '<div class="meta">📞 '+escapeHtml(l.phone||'-')+' • ✉️ '+escapeHtml(l.email||'-')+' • Standaard: '+avg+' min</div>'+
-          (learnerStatus(l)==='hold' && l.holdSince ? '<div class="small learner-status-meta">⏸ On hold sinds <b>'+escapeHtml(formatStatusDate(l.holdSince))+'</b></div>' : '')+
-          (learnerStatus(l)==='passed' ? '<div class="small learner-status-meta">🏁 Geslaagd'+(l.passedAt?' op <b>'+escapeHtml(formatStatusDate(l.passedAt))+'</b>':'')+(l.passedAttempt?' • <b>'+escapeHtml(String(l.passedAttempt))+'e</b> poging':'')+(l.passedLocation?' • '+escapeHtml(l.passedLocation):'')+'</div>' : '')+
           (l.relationNumber?'<div class="small" style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">CBR relatienummer: <b>'+escapeHtml(l.relationNumber)+'</b> <button class="btn btn-ghost" data-action="copyrelation" type="button">Kopieer</button></div>':'')+
           packageLine+
           (l.note?'<div class="small" style="margin-top:6px">'+escapeHtml(l.note)+'</div>':'')+
-          ((l.email||'').trim() ? '<div class="portal-avail-box" data-portal-availability="'+escapeHtml(String(l.id))+'"><div class="portal-avail-title">🕒 Beschikbaarheidsvoorkeuren</div><div class="small portal-avail-content">Laden…</div></div>' : '')+
         '</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
           ((l.email||'').trim() ? '<button class="btn btn-ghost" data-action="portalinvite">🚘 DrivePortal uitnodigen</button><button class="btn btn-ghost" data-action="portalcopy">Link kopiëren</button>' : '')+
           '<button class="btn btn-ghost" data-action="sheet">Leskaart</button>'+
           '<button class="btn btn-ghost" data-action="edit">Bewerken</button>'+
-          (learnerStatus(l)==='active' ? '<button class="btn btn-ghost" data-action="hold">⏸ On hold</button><button class="btn btn-ghost" data-action="passed">🏁 Geslaagd</button>' : '<button class="btn btn-ghost" data-action="activate">↩ Actief zetten</button>')+
           '<button class="btn btn-danger" data-action="delete">Verwijderen</button>'+
         '</div>'+
       '</div>';
   });
   list.innerHTML=html;
-  renderPortalAvailabilityIntoRows();
 }
-
-
-var portalAvailabilityLoadSeq = 0;
-
-function portalWeekdayName(n){
-  return ['Zo','Ma','Di','Wo','Do','Vr','Za'][Number(n)] || '?';
-}
-
-function portalTimeShort(v){
-  return String(v || '').slice(0,5);
-}
-
-function portalDateNl(v){
-  if(!v) return '';
-  var p = String(v).split('-');
-  return p.length===3 ? (p[2]+'-'+p[1]+'-'+p[0]) : String(v);
-}
-
-function renderPortalAvailabilityIntoRows(){
-  if(typeof window.loadDrivePortalAvailabilityMap !== 'function') return;
-
-  var boxes = document.querySelectorAll('[data-portal-availability]');
-  if(!boxes.length) return;
-
-  var seq = ++portalAvailabilityLoadSeq;
-
-  window.loadDrivePortalAvailabilityMap().then(function(map){
-    if(seq !== portalAvailabilityLoadSeq) return;
-
-    boxes.forEach(function(box){
-      var lid = String(box.getAttribute('data-portal-availability') || '');
-      var data = map && map[lid] ? map[lid] : {slots:[], exceptions:[]};
-      var slots = data.slots || [];
-      var exceptions = data.exceptions || [];
-      var content = box.querySelector('.portal-avail-content');
-      if(!content) return;
-
-      if(!slots.length && !exceptions.length){
-        content.innerHTML = '<span class="portal-avail-empty">Nog geen voorkeuren doorgegeven.</span>';
-        return;
-      }
-
-      var byDay = {};
-      slots.forEach(function(a){
-        var d = Number(a.weekday);
-        if(!byDay[d]) byDay[d] = [];
-        byDay[d].push(portalTimeShort(a.start_time)+'–'+portalTimeShort(a.end_time));
-      });
-
-      var order = {1:1,2:2,3:3,4:4,5:5,6:6,0:7};
-      var slotHtml = Object.keys(byDay)
-        .sort(function(a,b){ return order[a]-order[b]; })
-        .map(function(d){
-          return '<span class="portal-avail-chip"><b>'+portalWeekdayName(d)+'</b> '+escapeHtml(byDay[d].join(', '))+'</span>';
-        }).join('');
-
-      var excHtml = '';
-      if(exceptions.length){
-        excHtml = '<div class="portal-avail-exceptions"><b>Afwijkingen:</b> '+
-          exceptions.map(function(e){
-            var range = portalDateNl(e.start_date);
-            if(e.end_date && e.end_date !== e.start_date) range += ' t/m '+portalDateNl(e.end_date);
-            return '<span>'+escapeHtml(range+(e.note ? ' · '+e.note : ''))+'</span>';
-          }).join(' • ')+'</div>';
-      }
-
-      content.innerHTML = '<div class="portal-avail-chips">'+slotHtml+'</div>'+excHtml;
-    });
-  }).catch(function(err){
-    console.warn('DrivePortal beschikbaarheid laden', err);
-    boxes.forEach(function(box){
-      var content = box.querySelector('.portal-avail-content');
-      if(content) content.textContent = 'Voorkeuren konden niet worden geladen.';
-    });
-  });
-}
-
 
 function openInvoiceForLearner(lid){
   var learner = learners.find(function(x){ return x.id===lid; });
@@ -677,16 +485,6 @@ function openSheetFor(lid){
   if(typeof rebuildLearnerOptions === 'function') rebuildLearnerOptions();
   if(typeof switchTab === 'function') switchTab('sheet');
   else if(typeof renderSheet === 'function') renderSheet();
-}
-
-var learnerStatusTabsEl = document.getElementById('learnerStatusTabs');
-if(learnerStatusTabsEl){
-  learnerStatusTabsEl.addEventListener('click', function(e){
-    var btn=e.target.closest('[data-learner-status]');
-    if(!btn) return;
-    learnerStatusFilter=btn.getAttribute('data-learner-status') || 'active';
-    renderLearners();
-  });
 }
 
 $('#learnerList').addEventListener('click', function(e){
@@ -721,12 +519,6 @@ $('#learnerList').addEventListener('click', function(e){
     }else if(action==='edit'){
       var l=learners.find(function(x){return x.id===id});
       if(l) openLearnerModal(l);
-    }else if(action==='hold'){
-      setLearnerStatus(id,'hold');
-    }else if(action==='passed'){
-      setLearnerStatus(id,'passed');
-    }else if(action==='activate'){
-      setLearnerStatus(id,'active');
     }else if(action==='delete'){
       deleteLearner(id);
     }else if(action==='invoices'){
@@ -854,19 +646,12 @@ function openScoreModal(ctx){
     if(!mod){ alert('Module niet gevonden.'); return; }
     var pids = (mod.parts||[]).map(function(p,pi){return p.id;});
     applyScoreToPidList(ctx.lid, ctx.date, pids, chosenScore);
-    closeScoreModal();
   };
 
   scoreFillLessonBtn.onclick=function(){
     if(!chosenScore){ alert('Kies eerst een score (1–8).'); return; }
-    // 'Vul hele les' vult alleen module 1 t/m 3. Module 4 (bijzondere
-    // verrichtingen) blijft bewust handmatig, omdat niet elke oefening
-    // tijdens iedere les wordt uitgevoerd.
-    var pids = (curriculum.modules||[]).slice(0,3).reduce(function(out,mod){
-      return out.concat((mod.parts||[]).map(function(p){ return p.id; }));
-    },[]);
+    var pids = allPartsFlat().map(function(p,pi){return p.id;});
     applyScoreToPidList(ctx.lid, ctx.date, pids, chosenScore);
-    closeScoreModal();
   };
 
   scoreCancelBtn.onclick=closeScoreModal;
@@ -923,19 +708,14 @@ function renderSheet(){
   var avg=learnerObj? (typeof learnerObj.avgMinutes==='number'?learnerObj.avgMinutes:100) : 100;
 
   var datesAsc=datesAscForLearner(lid);
-
-  // Proeflessen zijn gratis en tellen niet mee. Gewone rijlessen en examens
-  // tellen wél mee; zo blijft de voorbereidingstijd bij een examen optioneel
-  // via de gekozen duur (bijv. 60 of 90 minuten). Privé telt niet mee.
-  var lessonDatesMap={};
-  var lessonEvents = lessons.filter(function(ev){
-    if(ev.learnerId!==lid || !ev.date || (ev.type!=='lesson' && ev.type!=='exam')) return false;
-    lessonDatesMap[ev.date]=true;
-    return true;
-  });
-  var lessonDatesAsc=Object.keys(lessonDatesMap).sort();
-  var total=lessonDatesAsc.length;
-  var actualMinutes = lessonEvents.reduce(function(sum, ev){
+  var total=datesAsc.length;
+  // Gebruik voor het urentotaal de WERKELIJKE duur van de agenda-afspraken.
+  // Voorheen werd 'standaard lesduur × aantal lesdatums' gebruikt. Daardoor
+  // veranderde het urentotaal niet wanneer een bestaande les van bv. 60 naar
+  // 120 minuten werd aangepast.
+  var actualMinutes = lessons.filter(function(ev){
+    return ev.learnerId===lid && ev.date;
+  }).reduce(function(sum, ev){
     return sum + (Number(ev.duration||0)||0);
   }, 0);
   var hours=Math.round((actualMinutes/60)*10)/10;
@@ -956,15 +736,11 @@ function renderSheet(){
     var rowsHTML = '';
     (curriculum.modules||[]).forEach(function(mod, mi){
       var parts=(mod.parts||[]);
-      // Voortgang is gebaseerd op het niveau van de laatste score (1-8),
-      // niet op alleen het feit dat een onderdeel ooit is ingevuld.
-      // Daardoor geeft 'hele les = 1' ongeveer 13% en niet 100%.
-      var scoreSum=0;
+      var done=0;
       for(var j=0;j<parts.length;j++){
-        var sv=lastScoreForPart(parts[j].id);
-        if(typeof sv==='number' && !isNaN(sv)) scoreSum += Math.max(0, Math.min(8, sv));
+        if(lastScoreForPart(parts[j].id)!==null) done++;
       }
-      var pct = parts.length ? Math.round((scoreSum/(parts.length*8))*100) : 0;
+      var pct = parts.length ? Math.round((done/parts.length)*100) : 0;
       var title = (mod.label||('Module '+(mi+1)));
       rowsHTML += ''
         + '<div class="mp-row" title="'+escapeHtml(title)+'">'
@@ -979,16 +755,11 @@ function renderSheet(){
 
   var datesWindow=datesAsc.slice(-51);
   var datesDisplay=datesWindow.slice().reverse();
-  function examForDate(d){
-    return lessons.find(function(ev){return ev.learnerId===lid && ev.date===d && ev.type==='exam';}) || null;
-  }
-  function trialForDate(d){
-    return lessons.find(function(ev){return ev.learnerId===lid && ev.date===d && ev.type==='trial';}) || null;
-  }
 
   function lessonNumberForDate(d){
-    var li=lessonDatesAsc.indexOf(d);
-    return li>=0 ? (li+1) : '';
+    var wi=datesWindow.indexOf(d);
+    if(wi<0) return '';
+    return (total - (datesWindow.length - 1 - wi));
   }
 
   var el=$('#sheet');
@@ -998,11 +769,8 @@ function renderSheet(){
   for(var i=0;i<51;i++){
     var d=datesDisplay[i]||'';
     var nr=d?lessonNumberForDate(d):'';
-    var exam=d?examForDate(d):null;
-    var trial=d?trialForDate(d):null;
-    var shownDate=d?formatStatusDate(d):'';
-    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+shownDate+'</small></div>'):(trial?('<div class="trial-head">PROEFLES<small>'+shownDate+'</small></div>'):('<div>Les '+nr+'<small>'+shownDate+'</small></div>'))):('<div>—<small>&nbsp;</small></div>');
-    html+='<div class="col-header'+(exam?' exam-col-header':(trial?' trial-col-header':''))+'">'+label+'</div>';
+    var label=d?('<div>Les '+nr+'<small>'+d+'</small></div>'):('<div>—<small>&nbsp;</small></div>');
+    html+='<div class="col-header">'+label+'</div>';
   }
   html+='</div></div>';
 
@@ -1021,15 +789,9 @@ function renderSheet(){
       html+='<div class="sheet-cell part-label module-row" data-mod-id="'+escapeHtml(mid)+'"><span class="part-id" title="ID: '+escapeHtml(String(p.id))+'">'+escapeHtml(disp+'.')+'</span> '+escapeHtml(p.t||'')+'</div>';
       for(i=0;i<51;i++){
         var date=datesDisplay[i]||'';
-        var exam=date?examForDate(date):null;
-        var trial=date?trialForDate(date):null;
-        var s=(date&&!exam&&!trial)?scoreGet(lid,p.id,date):null;
-        var clickable=!!date && !exam && !trial && (historicalMode || i===0);
-        var scoreText=(exam||trial)?'':(s!==null?s:'');
-        var specialCell=exam?' exam-sheet-cell':(trial?' trial-sheet-cell':'');
-        var specialScore=exam?'exam-score ':(trial?'trial-score ':'');
-        var specialTitle=exam?'Praktijkexamen – geen scores invoeren':(trial?'Proefles – telt niet mee als lesuur':'');
-        html+='<div class="sheet-cell module-cell'+specialCell+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+specialScore+((!exam&&!trial&&s)?cellClass(s):'')+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+specialTitle+'">'+scoreText+'</div></div>';
+        var s=date?scoreGet(lid,p.id,date):null;
+        var clickable=!!date && (historicalMode || i===0);
+        html+='<div class="sheet-cell module-cell" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(s?cellClass(s):'')+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+'>'+(s!==null?s:'')+'</div></div>';
       }
     });
   });

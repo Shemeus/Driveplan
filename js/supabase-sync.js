@@ -1,5 +1,3 @@
-// DrivePlan v18.7 aparte woonplaats
-// DrivePlan v18.6 factuurgegevens sync
 
 /* ===== DrivePlan Supabase sync =====
    Alleen publishable clientgegevens. Beveiliging loopt via Supabase Auth + RLS.
@@ -146,10 +144,6 @@
         driveplan_learner_id:String(learner.id),
         email:String(learner.email).trim(),
         full_name:String(learner.name || 'Leerling'),
-        phone:String(learner.phone || '').trim() || null,
-        address:String(learner.address || '').trim() || null,
-        postal_code:String(learner.zip || '').trim() || null,
-        city:String(learner.city || '').trim() || null,
         active:true
       })
     });
@@ -257,17 +251,7 @@
   async function syncDrivePortalNow(manual){
     if(dpPortalSyncBusy){
       setPortalSyncStatus('Portaal sync is al bezig…');
-      if(!manual) return false;
-
-      // Bij een handmatige/zichtbare controle wachten we even op de lopende sync
-      // en voeren we daarna nogmaals een volledige sync uit.
-      for(var busyWait=0; busyWait<40 && dpPortalSyncBusy; busyWait++){
-        await new Promise(function(resolve){ setTimeout(resolve, 150); });
-      }
-      if(dpPortalSyncBusy){
-        alert('DrivePortal synchronisatie is nog bezig. Probeer het over een paar seconden opnieuw.');
-        return false;
-      }
+      return false;
     }
     if(!dpSession){
       setPortalSyncStatus('Niet ingelogd — portaal niet bijgewerkt');
@@ -612,49 +596,6 @@
       initCloudSync().catch(function(e){ console.error('DrivePlan sync init',e); });
     }, 0);
   });
-
-
-  async function loadDrivePortalAvailabilityMap(){
-    if(!dpSession || !dpSession.access_token) return {};
-
-    var students = await portalJson(
-      'portal_students?select=id,driveplan_learner_id&active=eq.true',
-      {method:'GET'}
-    );
-    students = Array.isArray(students) ? students : [];
-    if(!students.length) return {};
-
-    var availability = await portalJson(
-      'portal_availability?select=id,student_id,weekday,start_time,end_time&order=weekday.asc,start_time.asc',
-      {method:'GET'}
-    );
-    availability = Array.isArray(availability) ? availability : [];
-
-    var exceptions = await portalJson(
-      'portal_availability_exceptions?select=id,student_id,start_date,end_date,note&order=start_date.asc',
-      {method:'GET'}
-    );
-    exceptions = Array.isArray(exceptions) ? exceptions : [];
-
-    var now = new Date();
-    var today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-    var result = {};
-
-    students.forEach(function(st){
-      var key = String(st.driveplan_learner_id || '');
-      if(!key) return;
-      result[key] = {
-        slots: availability.filter(function(a){ return a.student_id === st.id; }),
-        exceptions: exceptions.filter(function(e){
-          return e.student_id === st.id && (!e.end_date || e.end_date >= today);
-        })
-      };
-    });
-
-    return result;
-  }
-
-  window.loadDrivePortalAvailabilityMap = loadDrivePortalAvailabilityMap;
 
   window.syncDrivePortalNow = syncDrivePortalNow;
 })();

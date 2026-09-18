@@ -2,9 +2,7 @@
 function datesAscForLearner(lid){
   var uniq={};
   lessons.forEach(function(ev){
-    // Proeflessen blijven zichtbaar op de leskaart als historisch moment, maar
-    // tellen niet mee als lesuur. Privé-afspraken horen niet op de leskaart.
-    if(ev.learnerId===lid && ev.date && (ev.type==='lesson' || ev.type==='exam' || ev.type==='trial')) uniq[ev.date]=true;
+    if(ev.learnerId===lid && ev.date) uniq[ev.date]=true;
   });
   return Object.keys(uniq).sort();
 }
@@ -200,127 +198,10 @@ function renderTodayTomorrow(){
   renderList(tomorrowISO, 'dpTomorrowList');
 }
 
-
-var whoCanHereState = {date:'', time:'', duration:90};
-
-function dpMinutes(t){
-  var p=String(t||'00:00').split(':');
-  return (Number(p[0])||0)*60 + (Number(p[1])||0);
-}
-function dpWeekdayForIso(iso){
-  var p=String(iso).split('-');
-  var d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
-  return d.getDay();
-}
-function dpExceptionBlocksDate(ex, iso){
-  var start=String(ex.start_date||'');
-  var end=String(ex.end_date||ex.start_date||'');
-  return !!start && iso>=start && iso<=end;
-}
-function ensureWhoCanHereModal(){
-  if(document.getElementById('whoCanHereModal')) return;
-  var el=document.createElement('div');
-  el.id='whoCanHereModal';
-  el.style.cssText='position:fixed;inset:0;z-index:99990;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:18px';
-  el.innerHTML=
-    '<div class="who-can-card">'+
-      '<div class="who-can-head"><div><h3 style="margin:0">Wie kan hier?</h3><div class="small" id="whoCanHereWhen"></div></div><button class="btn btn-ghost" id="whoCanHereClose" type="button">Sluiten</button></div>'+
-      '<div class="who-can-controls"><label>Lesduur <select id="whoCanHereDuration"><option value="60">60 min</option><option value="90" selected>90 min</option><option value="120">120 min</option></select></label></div>'+
-      '<div id="whoCanHereResults" class="who-can-results"><div class="small">Beschikbaarheid laden…</div></div>'+
-    '</div>';
-  document.body.appendChild(el);
-  document.getElementById('whoCanHereClose').addEventListener('click',function(){el.style.display='none'});
-  el.addEventListener('click',function(e){if(e.target===el)el.style.display='none'});
-  document.getElementById('whoCanHereDuration').addEventListener('change',function(){
-    whoCanHereState.duration=Number(this.value)||90;
-    loadWhoCanHereResults();
-  });
-}
-function openWhoCanHere(date,time){
-  ensureWhoCanHereModal();
-  whoCanHereState.date=date;
-  whoCanHereState.time=time;
-  whoCanHereState.duration=90;
-  document.getElementById('whoCanHereDuration').value='90';
-  document.getElementById('whoCanHereWhen').textContent=date+' • '+time;
-  document.getElementById('whoCanHereModal').style.display='flex';
-  loadWhoCanHereResults();
-}
-async function loadWhoCanHereResults(){
-  var out=document.getElementById('whoCanHereResults');
-  if(!out) return;
-  out.innerHTML='<div class="small">Beschikbaarheid laden…</div>';
-  try{
-    if(typeof window.loadDrivePortalAvailabilityMap!=='function') throw new Error('DrivePortal beschikbaarheid niet beschikbaar');
-    var map=await window.loadDrivePortalAvailabilityMap();
-    var weekday=dpWeekdayForIso(whoCanHereState.date);
-    var start=dpMinutes(whoCanHereState.time);
-    var end=start+Number(whoCanHereState.duration||90);
-    var matches=[];
-
-    learners.forEach(function(l){
-      if(!agendaLearnerIsActive(l)) return;
-      var d=map && map[String(l.id)];
-      if(!d) return;
-      var blocked=(d.exceptions||[]).some(function(ex){return dpExceptionBlocksDate(ex,whoCanHereState.date)});
-      if(blocked) return;
-      var slot=(d.slots||[]).find(function(s){
-        return Number(s.weekday)===weekday && start>=dpMinutes(s.start_time) && end<=dpMinutes(s.end_time);
-      });
-      if(slot) matches.push({learner:l,slot:slot});
-    });
-
-    matches.sort(function(a,b){return (a.learner.name||'').localeCompare((b.learner.name||''),'nl')});
-    if(!matches.length){
-      out.innerHTML='<div class="who-can-empty">Niemand heeft voor dit hele tijdvak een passende beschikbaarheidsvoorkeur opgegeven.</div>';
-      return;
-    }
-    out.innerHTML=matches.map(function(m){
-      var l=m.learner;
-      return '<div class="who-can-person">'+
-        '<div><b>'+escapeHtml(l.name||'Leerling')+'</b><div class="small">Voorkeur '+escapeHtml(String(m.slot.start_time).slice(0,5))+'–'+escapeHtml(String(m.slot.end_time).slice(0,5))+'</div></div>'+
-        '<button class="btn btn-primary who-can-plan" data-lid="'+escapeHtml(String(l.id))+'">Inplannen</button>'+
-      '</div>';
-    }).join('');
-
-    Array.prototype.slice.call(out.querySelectorAll('.who-can-plan')).forEach(function(btn){
-      btn.addEventListener('click',function(){
-        var lid=btn.getAttribute('data-lid');
-        document.getElementById('whoCanHereModal').style.display='none';
-        selectedLearnerId=lid;
-        openLessonModal(null);
-        nlLearner.value=lid;
-        nlDate.value=whoCanHereState.date;
-        setNlTimeFromStr(whoCanHereState.time);
-        nlDuration.innerHTML=buildDurationOptions(normalizeDuration(whoCanHereState.duration));
-        var student=learners.find(function(x){return String(x.id)===String(lid)});
-        if(nlPickup) nlPickup.value=(student&&student.address)?student.address:'';
-        updateEndTime();
-      });
-    });
-  }catch(e){
-    console.warn('Wie kan hier',e);
-    out.innerHTML='<div class="who-can-empty">Beschikbaarheid kon niet worden geladen.</div>';
-  }
-}
-
 function renderWeek(){
   var todayISO = isoToday();
   var days=[0,1,2,3,4,5,6].map(function(i){return addDays(weekStart,i)});
-  $('#weekHead').innerHTML='<div></div>'+days.map(function(d){
-    var iso=isoFromDateLocal(d);
-    return '<button type="button" class="hd agenda-date-head" data-date="'+iso+'" title="Nieuwe afspraak op '+escapeHtml(fmtHead(d))+'">'+fmtHead(d)+'</button>';
-  }).join('');
-
-  // Klik alleen op de datumkop om direct een nieuwe afspraak op die dag te maken.
-  // De lege tijdvakken eronder houden hun bestaande functie: "Wie kan hier?".
-  Array.prototype.slice.call($('#weekHead').querySelectorAll('.agenda-date-head')).forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var date=btn.getAttribute('data-date');
-      openLessonModal(null);
-      if(date) nlDate.value=date;
-    });
-  });
+  $('#weekHead').innerHTML='<div></div>'+days.map(function(d){return '<div class="hd">'+fmtHead(d)+'</div>'}).join('');
 
   var body='<div class="time-col">';
   slots.forEach(function(t){ var show = (String(t).slice(3)==='00'); body+='<div class="time-row">'+(show?t:'')+'</div>'; });
@@ -333,21 +214,6 @@ function renderWeek(){
     body+='</div>';
   });
   $('#weekBody').innerHTML=body;
-
-  // Klik op een leeg tijdvak om te zien welke leerlingen hier volgens hun
-  // DrivePortal-voorkeuren volledig in passen.
-  $all('.day-col').forEach(function(col){
-    var date=col.getAttribute('data-date');
-    Array.prototype.slice.call(col.querySelectorAll('.day-row')).forEach(function(row,idx){
-      row.classList.add('who-can-slot');
-      row.title='Wie kan hier?';
-      row.addEventListener('click',function(e){
-        if(e.target.closest('.event')) return;
-        var time=slots[idx];
-        if(date && time) openWhoCanHere(date,time);
-      });
-    });
-  });
 
   var rowH = 28;
   try{
@@ -411,13 +277,10 @@ var nlToSheet=$('#nlToSheet');
 var nlDelete=$('#nlDelete'), nlTitle=$('#nlTitle');
 var editLessonId=null;
 
-function agendaLearnerIsActive(l){
-  return !l || !l.status || l.status==='active';
-}
 function filterLessonLearners(query){
   query = (query||'').trim().toLowerCase();
   var cur = nlLearner && nlLearner.value ? nlLearner.value : '';
-  var arr = learners.filter(function(l){ return agendaLearnerIsActive(l); }).slice().sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'nl');});
+  var arr = learners.slice().sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'nl');});
 
   if(query){
     var pref = arr.filter(function(l){return (l.name||'').toLowerCase().indexOf(query)===0;});
@@ -472,17 +335,13 @@ function updateEndTime(){
 function rebuildLearnerOptions(){
   filterLessonLearners(nlLearnerSearch ? nlLearnerSearch.value : '');
 
-  var sortedLearners = learners.filter(function(l){ return agendaLearnerIsActive(l); }).slice().sort(function(a,b){ return (a.name||'').localeCompare((b.name||''), 'nl'); });
-  var allLearners = learners.slice().sort(function(a,b){ return (a.name||'').localeCompare((b.name||''), 'nl'); });
+  var sortedLearners = learners.slice().sort(function(a,b){ return (a.name||'').localeCompare((b.name||''), 'nl'); });
   var keep=$('#sheetLearner').value;
-  $('#sheetLearner').innerHTML=allLearners.map(function(l){
-    var suffix = (l.status==='hold') ? ' — on hold' : (l.status==='passed' ? ' — geslaagd' : '');
-    return '<option value="'+l.id+'">'+escapeHtml((l.name||'')+suffix)+'</option>';
-  }).join('');
-  if(allLearners.some(function(l){return l.id===selectedLearnerId})) $('#sheetLearner').value=selectedLearnerId;
-  else if(allLearners.some(function(l){return l.id===keep})) $('#sheetLearner').value=keep;
+  $('#sheetLearner').innerHTML=sortedLearners.map(function(l){return '<option value="'+l.id+'">'+escapeHtml(l.name)+'</option>'}).join('');
+  if(sortedLearners.some(function(l){return l.id===selectedLearnerId})) $('#sheetLearner').value=selectedLearnerId;
+  else if(sortedLearners.some(function(l){return l.id===keep})) $('#sheetLearner').value=keep;
 
-  $('#invLearner').innerHTML = '<option value="">-- kies leerling --</option>' + allLearners.map(function(l){return '<option value="'+l.id+'">'+escapeHtml(l.name)+'</option>'}).join('');
+  $('#invLearner').innerHTML = '<option value="">-- kies leerling --</option>' + sortedLearners.map(function(l){return '<option value="'+l.id+'">'+escapeHtml(l.name)+'</option>'}).join('');
   $('#invLearner').value = '';
 
   $('#historicalToggle').checked = !!historicalMode;
@@ -500,11 +359,7 @@ function openLessonModal(id){
     nlTitle.textContent='Bewerken';
     nlDelete.style.display='inline-block';
 
-    var editLearnerObj=learners.find(function(l){return l.id===ev.learnerId});
-    if(editLearnerObj && !agendaLearnerIsActive(editLearnerObj) && !Array.from(nlLearner.options).some(function(o){return o.value===editLearnerObj.id;})){
-      var opt=document.createElement('option'); opt.value=editLearnerObj.id; opt.textContent=editLearnerObj.name+' — '+(editLearnerObj.status==='passed'?'geslaagd':'on hold'); nlLearner.appendChild(opt);
-    }
-    nlLearner.value = ev.learnerId || '';
+    nlLearner.value = ev.learnerId || (learners[0]?learners[0].id:'');
     nlDate.value = ev.date || isoToday();
     setNlTimeFromStr(ev.time || suggestNextTime());
     nlDuration.innerHTML = buildDurationOptions(normalizeDuration(ev.duration||50));
@@ -516,10 +371,10 @@ function openLessonModal(id){
     nlTitle.textContent='Nieuwe';
     nlDelete.style.display='none';
 
-    if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId && agendaLearnerIsActive(l)})) nlLearner.value=selectedLearnerId;
-    else { var firstActive=learners.find(function(l){return agendaLearnerIsActive(l)}); nlLearner.value=(firstActive?firstActive.id:''); }
+    if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId})) nlLearner.value=selectedLearnerId;
+    else nlLearner.value=(learners[0]?learners[0].id:'');
 
-    nlDate.value=isoFromDateLocal(weekStart);
+    nlDate.value=isoToday();
     setNlTimeFromStr(suggestNextTime());
 
     var student=learners.find(function(l){return l.id===nlLearner.value});
@@ -556,13 +411,6 @@ if(nlLearnerSearch){
 if(nlHour) nlHour.addEventListener('change', updateEndTime);
 if(nlMinute) nlMinute.addEventListener('change', updateEndTime);
 nlDuration.addEventListener('change', updateEndTime);
-if(nlType) nlType.addEventListener('change', function(){
-  if(nlType.value==='exam'){
-    nlDuration.innerHTML=buildDurationOptions(60);
-    nlDuration.value='60';
-  }
-  updateEndTime();
-});
 
 function saveNewOrEditLesson(){
   var lid=nlLearner.value;

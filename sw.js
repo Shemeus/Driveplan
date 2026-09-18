@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v18-14-datums-scorepopup';
+const CACHE_NAME = 'driveplan-v18-3-agenda-vanaf-06-00';
 
 const urlsToCache = [
   './',

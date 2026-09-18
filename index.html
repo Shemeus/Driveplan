@@ -131,14 +131,9 @@
 <button class="btn btn-primary" id="openNewLearner">+ Nieuwe leerling</button>
 </div>
 </div>
-<div class="learner-status-tabs" id="learnerStatusTabs" style="margin-top:10px">
-<button class="btn btn-ghost learner-status-tab active" type="button" data-learner-status="active">Actief</button>
-<button class="btn btn-ghost learner-status-tab" type="button" data-learner-status="hold">On hold</button>
-<button class="btn btn-ghost learner-status-tab" type="button" data-learner-status="passed">Geslaagd</button>
-</div>
 <div style="margin-top:10px">
 <input autocomplete="off" class="input" id="learnerSearch" placeholder="Zoek leerling...">
-<div class="small" style="margin-top:6px">Tik op een leerling → direct naar leskaart. On hold en geslaagde leerlingen blijven volledig bewaard, maar verschijnen niet bij het plannen van nieuwe lessen.</div>
+<div class="small" style="margin-top:6px">Tik op een leerling → direct naar leskaart. Gebruik “Bewerken” rechts om gegevens te wijzigen.</div>
 </input></div>
 <div class="list" id="learnerList" style="margin-top:10px"></div>
 </div>
@@ -394,11 +389,6 @@ Reminder rijles: {date} om {time} (tot {endTime}).
 {note}
 Tot dan!" rows="7"></textarea>
 </div>
-<div class="card" style="margin-top:14px">
-<h3 style="margin-top:0">Volgorde lesduren</h3>
-<p class="small">Zet de minuten in de volgorde waarin je ze in keuzelijsten wilt zien. 50 en 100 minuten blijven beschikbaar maar staan standaard onderaan.</p>
-<input class="input" id="durationOrderSetting" placeholder="Bijv. 90,60,120,150,180,50,100"/>
-</div>
 <div class="toolbar" style="margin-top:14px">
 <button class="btn btn-primary" id="settingsSaveBtn" type="button">Instellingen opslaan</button>
 </div>
@@ -453,11 +443,9 @@ Tot dan!" rows="7"></textarea>
 <div class="modal-row">
 <div style="grid-column:1 / -1">
 <label class="small">Ophaaladres</label>
-<div style="display:flex; gap:8px; flex-wrap:wrap">
-<input class="input" id="nlPickup" placeholder="Kies of typ een ophaaladres" style="flex:1;min-width:220px"/>
-<button class="btn btn-ghost" id="nlUseAddr" type="button">Hoofdadres</button>
-<button class="btn btn-ghost" id="nlUseAddr2" type="button">Adres 2</button>
-<button class="btn btn-ghost" id="nlUseAddr3" type="button">Adres 3</button>
+<div style="display:flex; gap:8px">
+<input class="input" id="nlPickup" placeholder="Bijv. Huisadres (automatisch) of ander ophaalpunt" style="flex:1"/>
+<button class="btn btn-ghost" id="nlUseAddr" type="button">Huisadres</button>
 </div>
 <div class="small" style="margin-top:6px">Laat leeg als je geen ophaalregel in de agenda wilt.</div>
 </div>
@@ -488,29 +476,12 @@ Tot dan!" rows="7"></textarea>
 </div>
 <div class="modal-row">
 <div>
-<label class="small">Straat + huisnummer</label>
-<input class="input" id="lrAddress" placeholder="Koningshof 11"/>
+<label class="small">Adres</label>
+<input class="input" id="lrAddress" placeholder="Straat + huisnummer, Plaats"/>
 </div>
 <div>
 <label class="small">Postcode</label>
 <input class="input" id="lrZip" placeholder="1234 AB"/>
-</div>
-</div>
-<div class="modal-row">
-<div>
-<label class="small">Woonplaats</label>
-<input class="input" id="lrCity" placeholder="Medemblik"/>
-</div>
-<div></div>
-</div>
-<div class="modal-row">
-<div>
-<label class="small">Extra ophaaladres 1</label>
-<input class="input" id="lrAddress2" placeholder="Bijv. vader/moeder"/>
-</div>
-<div>
-<label class="small">Extra ophaaladres 2</label>
-<input class="input" id="lrAddress3" placeholder="Bijv. werk"/>
 </div>
 </div>
 <div class="modal-row">
@@ -879,8 +850,8 @@ Tot dan!" rows="7"></textarea>
 </div>
 <script src="js/core.js"></script>
 <script src="js/agenda.js"></script>
-<script src="js/learners-sheet.js?v=18.13"></script>
+<script src="js/learners-sheet.js"></script>
 <script src="js/finance-modules-init.js"></script>
-<script src="js/supabase-sync.js?v=18.13"></script>
+<script src="js/supabase-sync.js"></script>
 </body>
 </html>
