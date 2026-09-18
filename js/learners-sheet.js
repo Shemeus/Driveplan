@@ -1,6 +1,6 @@
 /* ===== Leerlingen ===== */
 var modalLearner=$('#modalLearner');
-var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrZip=$('#lrZip'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
+var lrName=$('#lrName'), lrPhone=$('#lrPhone'), lrEmail=$('#lrEmail'), lrAvg=$('#lrAvg'), lrNote=$('#lrNote'), lrAddress=$('#lrAddress'), lrAddress2=$('#lrAddress2'), lrAddress3=$('#lrAddress3'), lrZip=$('#lrZip'), lrRelation=$('#lrRelation'), lrSource=$('#lrSource'), lrPackage=$('#lrPackage'), lrPackageStats=$('#lrPackageStats');
 var editLearnerId=null;
 
 function round1(n){ return Math.round((Number(n)||0)*10)/10; }
@@ -85,6 +85,8 @@ function openLearnerModal(l){
   lrPhone.value=(l&&l.phone)?l.phone:'';
   lrEmail.value=(l&&l.email)?l.email:'';
   lrAddress.value=(l&&l.address)?l.address:'';
+  if(lrAddress2) lrAddress2.value=(l&&l.address2)?l.address2:'';
+  if(lrAddress3) lrAddress3.value=(l&&l.address3)?l.address3:'';
   lrZip.value=(l&&l.zip)?l.zip:'';
   lrRelation.value=(l&&l.relationNumber)?l.relationNumber:'';
   lrSource.value=(l&&l.source)?l.source:'own';
@@ -320,6 +322,8 @@ async function saveLearner(){
   var phone=lrPhone.value.trim();
   var email=lrEmail.value.trim();
   var address=(lrAddress.value||'').trim();
+  var address2=(lrAddress2&&lrAddress2.value||'').trim();
+  var address3=(lrAddress3&&lrAddress3.value||'').trim();
   var zip=(lrZip.value||'').trim();
   var avg=parseInt(lrAvg.value,10);
   var relationNumber=(lrRelation.value||'').trim();
@@ -346,11 +350,11 @@ async function saveLearner(){
   if(editLearnerId){
   var i=learners.findIndex(function(x){return x.id===editLearnerId});
   if(i>=0){
-    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
+    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
   }
   toast('Bijgewerkt');
 }else{
-  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
+  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
   toast('Toegevoegd');
 }
 
@@ -461,6 +465,7 @@ function renderLearners(){
           (l.relationNumber?'<div class="small" style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">CBR relatienummer: <b>'+escapeHtml(l.relationNumber)+'</b> <button class="btn btn-ghost" data-action="copyrelation" type="button">Kopieer</button></div>':'')+
           packageLine+
           (l.note?'<div class="small" style="margin-top:6px">'+escapeHtml(l.note)+'</div>':'')+
+          ((l.email||'').trim() ? '<div class="portal-avail-box" data-portal-availability="'+escapeHtml(String(l.id))+'"><div class="portal-avail-title">🕒 Beschikbaarheidsvoorkeuren</div><div class="small portal-avail-content">Laden…</div></div>' : '')+
         '</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
           ((l.email||'').trim() ? '<button class="btn btn-ghost" data-action="portalinvite">🚘 DrivePortal uitnodigen</button><button class="btn btn-ghost" data-action="portalcopy">Link kopiëren</button>' : '')+
@@ -471,7 +476,85 @@ function renderLearners(){
       '</div>';
   });
   list.innerHTML=html;
+  renderPortalAvailabilityIntoRows();
 }
+
+
+var portalAvailabilityLoadSeq = 0;
+
+function portalWeekdayName(n){
+  return ['Zo','Ma','Di','Wo','Do','Vr','Za'][Number(n)] || '?';
+}
+
+function portalTimeShort(v){
+  return String(v || '').slice(0,5);
+}
+
+function portalDateNl(v){
+  if(!v) return '';
+  var p = String(v).split('-');
+  return p.length===3 ? (p[2]+'-'+p[1]+'-'+p[0]) : String(v);
+}
+
+function renderPortalAvailabilityIntoRows(){
+  if(typeof window.loadDrivePortalAvailabilityMap !== 'function') return;
+
+  var boxes = document.querySelectorAll('[data-portal-availability]');
+  if(!boxes.length) return;
+
+  var seq = ++portalAvailabilityLoadSeq;
+
+  window.loadDrivePortalAvailabilityMap().then(function(map){
+    if(seq !== portalAvailabilityLoadSeq) return;
+
+    boxes.forEach(function(box){
+      var lid = String(box.getAttribute('data-portal-availability') || '');
+      var data = map && map[lid] ? map[lid] : {slots:[], exceptions:[]};
+      var slots = data.slots || [];
+      var exceptions = data.exceptions || [];
+      var content = box.querySelector('.portal-avail-content');
+      if(!content) return;
+
+      if(!slots.length && !exceptions.length){
+        content.innerHTML = '<span class="portal-avail-empty">Nog geen voorkeuren doorgegeven.</span>';
+        return;
+      }
+
+      var byDay = {};
+      slots.forEach(function(a){
+        var d = Number(a.weekday);
+        if(!byDay[d]) byDay[d] = [];
+        byDay[d].push(portalTimeShort(a.start_time)+'–'+portalTimeShort(a.end_time));
+      });
+
+      var order = {1:1,2:2,3:3,4:4,5:5,6:6,0:7};
+      var slotHtml = Object.keys(byDay)
+        .sort(function(a,b){ return order[a]-order[b]; })
+        .map(function(d){
+          return '<span class="portal-avail-chip"><b>'+portalWeekdayName(d)+'</b> '+escapeHtml(byDay[d].join(', '))+'</span>';
+        }).join('');
+
+      var excHtml = '';
+      if(exceptions.length){
+        excHtml = '<div class="portal-avail-exceptions"><b>Afwijkingen:</b> '+
+          exceptions.map(function(e){
+            var range = portalDateNl(e.start_date);
+            if(e.end_date && e.end_date !== e.start_date) range += ' t/m '+portalDateNl(e.end_date);
+            return '<span>'+escapeHtml(range+(e.note ? ' · '+e.note : ''))+'</span>';
+          }).join(' • ')+'</div>';
+      }
+
+      content.innerHTML = '<div class="portal-avail-chips">'+slotHtml+'</div>'+excHtml;
+    });
+  }).catch(function(err){
+    console.warn('DrivePortal beschikbaarheid laden', err);
+    boxes.forEach(function(box){
+      var content = box.querySelector('.portal-avail-content');
+      if(content) content.textContent = 'Voorkeuren konden niet worden geladen.';
+    });
+  });
+}
+
 
 function openInvoiceForLearner(lid){
   var learner = learners.find(function(x){ return x.id===lid; });
@@ -755,6 +838,9 @@ function renderSheet(){
 
   var datesWindow=datesAsc.slice(-51);
   var datesDisplay=datesWindow.slice().reverse();
+  function examForDate(d){
+    return lessons.find(function(ev){return ev.learnerId===lid && ev.date===d && ev.type==='exam';}) || null;
+  }
 
   function lessonNumberForDate(d){
     var wi=datesWindow.indexOf(d);
@@ -769,8 +855,9 @@ function renderSheet(){
   for(var i=0;i<51;i++){
     var d=datesDisplay[i]||'';
     var nr=d?lessonNumberForDate(d):'';
-    var label=d?('<div>Les '+nr+'<small>'+d+'</small></div>'):('<div>—<small>&nbsp;</small></div>');
-    html+='<div class="col-header">'+label+'</div>';
+    var exam=d?examForDate(d):null;
+    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+d+'</small></div>'):('<div>Les '+nr+'<small>'+d+'</small></div>')):('<div>—<small>&nbsp;</small></div>');
+    html+='<div class="col-header'+(exam?' exam-col-header':'')+'">'+label+'</div>';
   }
   html+='</div></div>';
 
@@ -789,9 +876,11 @@ function renderSheet(){
       html+='<div class="sheet-cell part-label module-row" data-mod-id="'+escapeHtml(mid)+'"><span class="part-id" title="ID: '+escapeHtml(String(p.id))+'">'+escapeHtml(disp+'.')+'</span> '+escapeHtml(p.t||'')+'</div>';
       for(i=0;i<51;i++){
         var date=datesDisplay[i]||'';
-        var s=date?scoreGet(lid,p.id,date):null;
-        var clickable=!!date && (historicalMode || i===0);
-        html+='<div class="sheet-cell module-cell" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(s?cellClass(s):'')+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+'>'+(s!==null?s:'')+'</div></div>';
+        var exam=date?examForDate(date):null;
+        var s=(date&&!exam)?scoreGet(lid,p.id,date):null;
+        var clickable=!!date && !exam && (historicalMode || i===0);
+        var scoreText=exam?'EX':(s!==null?s:'');
+        html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score ':((s?cellClass(s):'')))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?'Praktijkexamen – geen scores invoeren':'')+'">'+scoreText+'</div></div>';
       }
     });
   });

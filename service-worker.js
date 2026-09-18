@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v18-portal-uitnodigen';
+const CACHE_NAME = 'driveplan-v21';
 
 const urlsToCache = [
   './',

@@ -57,6 +57,9 @@ body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:lin
 .event{position:absolute;left:4px;right:4px;background:#bfefff;border:1px solid #9ddced;border-radius:18px;padding:10px 10px 12px;font-size:.92rem;cursor:pointer;white-space:normal;overflow:hidden;text-overflow:ellipsis;line-height:1.08;box-sizing:border-box;display:flex;flex-direction:column;box-shadow:0 6px 16px rgba(14,116,144,.10)}
 .event.lesson{background:#bfefff;border-color:#9ddced}
 .event.exam{background:#ffd9d9;border-color:#ffb7b7}
+.event.ttt{background:#e9d5ff;border-color:#c084fc}
+.event.bnor{background:#d6b08c;border-color:#9a6a43}
+.event.fear{background:#d6ad00;border-color:#a98200}
 .event.trial{background:#dff8e6;border-color:#bde9ca}
 .event.private{background:#ffe3c6;border-color:#ffc48d}
 .event.past{opacity:.7}
@@ -470,3 +473,38 @@ body.modal-open{overflow:hidden;touch-action:none}
     #modalLearner .learner-modal{max-height:calc(100vh - 24px)}
   }
 }
+
+
+/* DrivePortal v19 - beschikbaarheidsvoorkeuren */
+.portal-avail-box{
+  margin-top:10px;padding:10px 12px;border:1px solid #dbe7f5;
+  border-radius:12px;background:#f7fbff;max-width:760px
+}
+.portal-avail-title{font-weight:800;color:#173b67;margin-bottom:7px}
+.portal-avail-chips{display:flex;flex-wrap:wrap;gap:6px}
+.portal-avail-chip{
+  display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border-radius:999px;
+  background:#e9f3ff;color:#194f87;border:1px solid #d1e5fb;font-size:12px
+}
+.portal-avail-exceptions{
+  margin-top:7px;color:#6a4b00;background:#fff8e7;border:1px solid #ffe6a8;
+  border-radius:9px;padding:7px 8px;font-size:12px
+}
+.portal-avail-empty{color:#708094}
+
+/* v20 - Wie kan hier? */
+.day-row.who-can-slot{cursor:pointer}
+.day-row.who-can-slot:hover{background:rgba(37,99,235,.07)}
+.who-can-card{width:min(560px,100%);max-height:82vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.2)}
+.who-can-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.who-can-controls{margin:14px 0;padding:10px 12px;background:#f7f9fc;border-radius:10px}
+.who-can-controls select{margin-left:8px;padding:7px 9px;border:1px solid #ccd6e2;border-radius:8px;background:#fff}
+.who-can-results{display:grid;gap:8px}
+.who-can-person{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 12px;border:1px solid #dce5ef;border-radius:12px}
+.who-can-empty{padding:14px;border-radius:12px;background:#f7f9fc;color:#64748b}
+
+/* v21 */
+.exam-col-header{background:#ffe9e9!important;color:#a61b1b!important}
+.exam-head{font-weight:900;color:#a61b1b}.exam-head small{display:block;color:#a85b5b!important}
+.exam-sheet-cell{background:#fff5f5!important}
+.exam-score{background:#d92d20!important;color:#fff!important;font-size:10px!important;font-weight:900!important;cursor:not-allowed!important}

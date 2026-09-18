@@ -788,18 +788,34 @@ function cellClass(s){
 }
 
 /* ===== Duur opties ===== */
-function buildDurationOptions(selected){
-  var html='';
-  var legacy=[50,100];
-  legacy.forEach(function(m){
-    var label=(m===50)?'50 min (1 blok)':'100 min (2 blokken / 1u40)';
-    html+='<option value="'+m+'"'+(String(m)===String(selected)?' selected':'')+'>'+label+'</option>';
+var DURATION_ORDER_KEY='dp40_duration_order';
+function defaultDurationOrder(){
+  var a=[90,60,120];
+  for(var m=150;m<=480;m+=30) a.push(m);
+  a.push(50,100);
+  return a;
+}
+function getDurationOrder(){
+  var raw=store.read(DURATION_ORDER_KEY,null);
+  if(!Array.isArray(raw) || !raw.length) return defaultDurationOrder();
+  var valid=[], seen={};
+  raw.forEach(function(x){
+    var m=parseInt(x,10);
+    var ok=(m===50||m===100)||(m>=60&&m<=480&&m%30===0);
+    if(ok&&!seen[m]){seen[m]=1;valid.push(m);}
   });
-  for(var m=60;m<=480;m+=30){
-    var label2=m+' min ('+Math.floor(m/60)+':'+pad2(m%60)+')';
-    html+='<option value="'+m+'"'+(String(m)===String(selected)?' selected':'')+'>'+label2+'</option>';
-  }
-  return html;
+  defaultDurationOrder().forEach(function(m){if(!seen[m])valid.push(m);});
+  return valid;
+}
+function durationLabel(m){
+  if(m===50) return '50 min (1 blok)';
+  if(m===100) return '100 min (2 blokken / 1u40)';
+  return m+' min ('+Math.floor(m/60)+':'+pad2(m%60)+')';
+}
+function buildDurationOptions(selected){
+  return getDurationOrder().map(function(m){
+    return '<option value="'+m+'"'+(String(m)===String(selected)?' selected':'')+'>'+durationLabel(m)+'</option>';
+  }).join('');
 }
 function normalizeDuration(m){
   m=parseInt(m,10);

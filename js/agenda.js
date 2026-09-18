@@ -11,7 +11,7 @@ function datesAscForLearner(lid){
 function suggestNextTime(){
   var n=new Date(),h=n.getHours(),m=Math.ceil(n.getMinutes()/5)*5;
   if(m===60){m=0;h++}
-  if(h<8){h=9;m=0}
+  if(h<6){h=6;m=0}
   if(h>21||(h===21&&m>30)){h=9;m=0}
   return pad2(h)+':'+pad2(m);
 }
@@ -122,7 +122,10 @@ function renderTodayTomorrow(){
       var name = (ev.type==='private') ? 'Privé' : (l.name||'Onbekend');
       var endt = computeEndTimeStr(ev.time, ev.duration||50);
 
-      var typeLabel = ev.type==='exam' ? 'Examen' :
+      var typeLabel = ev.type==='exam' ? 'Praktijkexamen' :
+                      ev.type==='ttt' ? 'TTT' :
+                      ev.type==='bnor' ? 'BNOR examen' :
+                      ev.type==='fear' ? 'Faalangstexamen' :
                       ev.type==='trial' ? 'Proefles' :
                       ev.type==='private' ? 'Privé' : 'Rijles';
 
@@ -198,6 +201,109 @@ function renderTodayTomorrow(){
   renderList(tomorrowISO, 'dpTomorrowList');
 }
 
+
+var whoCanHereState = {date:'', time:'', duration:90};
+
+function dpMinutes(t){
+  var p=String(t||'00:00').split(':');
+  return (Number(p[0])||0)*60 + (Number(p[1])||0);
+}
+function dpWeekdayForIso(iso){
+  var p=String(iso).split('-');
+  var d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
+  return d.getDay();
+}
+function dpExceptionBlocksDate(ex, iso){
+  var start=String(ex.start_date||'');
+  var end=String(ex.end_date||ex.start_date||'');
+  return !!start && iso>=start && iso<=end;
+}
+function ensureWhoCanHereModal(){
+  if(document.getElementById('whoCanHereModal')) return;
+  var el=document.createElement('div');
+  el.id='whoCanHereModal';
+  el.style.cssText='position:fixed;inset:0;z-index:99990;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:18px';
+  el.innerHTML=
+    '<div class="who-can-card">'+
+      '<div class="who-can-head"><div><h3 style="margin:0">Wie kan hier?</h3><div class="small" id="whoCanHereWhen"></div></div><button class="btn btn-ghost" id="whoCanHereClose" type="button">Sluiten</button></div>'+
+      '<div class="who-can-controls"><label>Lesduur <select id="whoCanHereDuration"><option value="60">60 min</option><option value="90" selected>90 min</option><option value="120">120 min</option></select></label></div>'+
+      '<div id="whoCanHereResults" class="who-can-results"><div class="small">Beschikbaarheid laden…</div></div>'+
+    '</div>';
+  document.body.appendChild(el);
+  document.getElementById('whoCanHereClose').addEventListener('click',function(){el.style.display='none'});
+  el.addEventListener('click',function(e){if(e.target===el)el.style.display='none'});
+  document.getElementById('whoCanHereDuration').addEventListener('change',function(){
+    whoCanHereState.duration=Number(this.value)||90;
+    loadWhoCanHereResults();
+  });
+}
+function openWhoCanHere(date,time){
+  ensureWhoCanHereModal();
+  whoCanHereState.date=date;
+  whoCanHereState.time=time;
+  whoCanHereState.duration=90;
+  document.getElementById('whoCanHereDuration').value='90';
+  document.getElementById('whoCanHereWhen').textContent=date+' • '+time;
+  document.getElementById('whoCanHereModal').style.display='flex';
+  loadWhoCanHereResults();
+}
+async function loadWhoCanHereResults(){
+  var out=document.getElementById('whoCanHereResults');
+  if(!out) return;
+  out.innerHTML='<div class="small">Beschikbaarheid laden…</div>';
+  try{
+    if(typeof window.loadDrivePortalAvailabilityMap!=='function') throw new Error('DrivePortal beschikbaarheid niet beschikbaar');
+    var map=await window.loadDrivePortalAvailabilityMap();
+    var weekday=dpWeekdayForIso(whoCanHereState.date);
+    var start=dpMinutes(whoCanHereState.time);
+    var end=start+Number(whoCanHereState.duration||90);
+    var matches=[];
+
+    learners.forEach(function(l){
+      var d=map && map[String(l.id)];
+      if(!d) return;
+      var blocked=(d.exceptions||[]).some(function(ex){return dpExceptionBlocksDate(ex,whoCanHereState.date)});
+      if(blocked) return;
+      var slot=(d.slots||[]).find(function(s){
+        return Number(s.weekday)===weekday && start>=dpMinutes(s.start_time) && end<=dpMinutes(s.end_time);
+      });
+      if(slot) matches.push({learner:l,slot:slot});
+    });
+
+    matches.sort(function(a,b){return (a.learner.name||'').localeCompare((b.learner.name||''),'nl')});
+    if(!matches.length){
+      out.innerHTML='<div class="who-can-empty">Niemand heeft voor dit hele tijdvak een passende beschikbaarheidsvoorkeur opgegeven.</div>';
+      return;
+    }
+    out.innerHTML=matches.map(function(m){
+      var l=m.learner;
+      return '<div class="who-can-person">'+
+        '<div><b>'+escapeHtml(l.name||'Leerling')+'</b><div class="small">Voorkeur '+escapeHtml(String(m.slot.start_time).slice(0,5))+'–'+escapeHtml(String(m.slot.end_time).slice(0,5))+'</div></div>'+
+        '<button class="btn btn-primary who-can-plan" data-lid="'+escapeHtml(String(l.id))+'">Inplannen</button>'+
+      '</div>';
+    }).join('');
+
+    Array.prototype.slice.call(out.querySelectorAll('.who-can-plan')).forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var lid=btn.getAttribute('data-lid');
+        document.getElementById('whoCanHereModal').style.display='none';
+        selectedLearnerId=lid;
+        openLessonModal(null);
+        nlLearner.value=lid;
+        nlDate.value=whoCanHereState.date;
+        setNlTimeFromStr(whoCanHereState.time);
+        nlDuration.innerHTML=buildDurationOptions(normalizeDuration(whoCanHereState.duration));
+        var student=learners.find(function(x){return String(x.id)===String(lid)});
+        if(nlPickup) nlPickup.value=(student&&student.address)?student.address:'';
+        updateEndTime();
+      });
+    });
+  }catch(e){
+    console.warn('Wie kan hier',e);
+    out.innerHTML='<div class="who-can-empty">Beschikbaarheid kon niet worden geladen.</div>';
+  }
+}
+
 function renderWeek(){
   var todayISO = isoToday();
   var days=[0,1,2,3,4,5,6].map(function(i){return addDays(weekStart,i)});
@@ -214,6 +320,21 @@ function renderWeek(){
     body+='</div>';
   });
   $('#weekBody').innerHTML=body;
+
+  // Klik op een leeg tijdvak om te zien welke leerlingen hier volgens hun
+  // DrivePortal-voorkeuren volledig in passen.
+  $all('.day-col').forEach(function(col){
+    var date=col.getAttribute('data-date');
+    Array.prototype.slice.call(col.querySelectorAll('.day-row')).forEach(function(row,idx){
+      row.classList.add('who-can-slot');
+      row.title='Wie kan hier?';
+      row.addEventListener('click',function(e){
+        if(e.target.closest('.event')) return;
+        var time=slots[idx];
+        if(date && time) openWhoCanHere(date,time);
+      });
+    });
+  });
 
   var rowH = 28;
   try{
@@ -233,7 +354,12 @@ function renderWeek(){
 
     var rows=Math.max(1,Math.ceil((ev.duration||50)/5));
     var el=document.createElement('div');
-    var t = (ev.type==='exam'?'exam':(ev.type==='trial'?'trial':(ev.type==='private'?'private':'lesson')));
+    var t = ev.type==='exam' ? 'exam' :
+            ev.type==='ttt' ? 'ttt' :
+            ev.type==='bnor' ? 'bnor' :
+            ev.type==='fear' ? 'fear' :
+            ev.type==='trial' ? 'trial' :
+            ev.type==='private' ? 'private' : 'lesson';
     el.className='event '+t + (ev.date < todayISO ? ' past' : '');
     var rlist = col.querySelectorAll('.day-row');
     var topPx = idx * rowH;
@@ -249,7 +375,12 @@ function renderWeek(){
 
     var lobj=learners.find(function(x){return x.id===ev.learnerId});
     var name=lobj?lobj.name:'Onbekend';
-    var label = (t==='exam'?'EXAMEN ': (t==='trial'?'PROEF ': (t==='private'?'PRIVÉ ':'')));
+    var label = t==='exam' ? 'PRAKTIJKEXAMEN ' :
+                t==='ttt' ? 'TTT ' :
+                t==='bnor' ? 'BNOR EXAMEN ' :
+                t==='fear' ? 'FAALANGSTEXAMEN ' :
+                t==='trial' ? 'PROEF ' :
+                t==='private' ? 'PRIVÉ ' : '';
     if(t==='private'){ name='Privé'; }
     var endt = computeEndTimeStr(ev.time, ev.duration||50);
     var timeRange = escapeHtml(ev.time + ' – ' + endt);
@@ -295,7 +426,7 @@ function filterLessonLearners(query){
 }
 function buildHourOptions(selectedHH){
   var html='';
-  for(var h=8;h<=21;h++){
+  for(var h=6;h<=21;h++){
     var hh=pad2(h);
     html+='<option value="'+hh+'"'+(String(hh)===String(selectedHH)?' selected':'')+'>'+hh+'</option>';
   }
@@ -349,7 +480,7 @@ function rebuildLearnerOptions(){
 
 function openLessonModal(id){
   rebuildLearnerOptions();
-  if(nlHour) nlHour.innerHTML = buildHourOptions('08');
+  if(nlHour) nlHour.innerHTML = buildHourOptions('06');
   if(nlMinute) nlMinute.innerHTML = buildMinuteOptions('00');
   if(nlLearnerSearch) nlLearnerSearch.value='';
 
@@ -374,7 +505,7 @@ function openLessonModal(id){
     if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId})) nlLearner.value=selectedLearnerId;
     else nlLearner.value=(learners[0]?learners[0].id:'');
 
-    nlDate.value=isoToday();
+    nlDate.value=isoFromDateLocal(weekStart);
     setNlTimeFromStr(suggestNextTime());
 
     var student=learners.find(function(l){return l.id===nlLearner.value});
@@ -411,6 +542,17 @@ if(nlLearnerSearch){
 if(nlHour) nlHour.addEventListener('change', updateEndTime);
 if(nlMinute) nlMinute.addEventListener('change', updateEndTime);
 nlDuration.addEventListener('change', updateEndTime);
+if(nlType) nlType.addEventListener('change', function(){
+  if(nlType.value==='exam' || nlType.value==='ttt'){
+    nlDuration.innerHTML=buildDurationOptions(60);
+    nlDuration.value='60';
+  }else if(nlType.value==='fear'){
+    nlDuration.innerHTML=buildDurationOptions(90);
+    nlDuration.value='90';
+  }
+  // BNOR: geen vaste duur; gekozen duur blijft vrij instelbaar.
+  updateEndTime();
+});
 
 function saveNewOrEditLesson(){
   var lid=nlLearner.value;
