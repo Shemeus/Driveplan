@@ -986,7 +986,9 @@ company = normalizeCompanyState(company);
 
 learners = (learners||[]).map(function(l){
   if(!l.source) l.source = 'own';
-  if(!l.status) l.status = 'active';
+  // Alleen de drie DrivePlan-statussen zijn geldig.
+  // Bestaande leerlingen met een oudere/andere status mogen nooit onzichtbaar worden.
+  if(['active','hold','archive'].indexOf(l.status)===-1) l.status = 'active';
   return l;
 });
 store.write(K.learners, learners);

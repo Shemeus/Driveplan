@@ -448,7 +448,10 @@ function renderLearners(){
   var list=$('#learnerList');
   var q = ($('#learnerSearch') && $('#learnerSearch').value ? $('#learnerSearch').value.trim().toLowerCase() : '');
 
-  var arr = learners.filter(function(l){return (l.status||'active')===learnerStatusView;}).sort(function(a,b){
+  var arr = learners.filter(function(l){
+    var s=(['active','hold','archive'].indexOf(l.status)!==-1)?l.status:'active';
+    return s===learnerStatusView;
+  }).sort(function(a,b){
     return (a.name||'').localeCompare((b.name||''), 'nl');
   });
 
