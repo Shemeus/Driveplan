@@ -844,7 +844,7 @@ function renderSheet(){
   // veranderde het urentotaal niet wanneer een bestaande les van bv. 60 naar
   // 120 minuten werd aangepast.
   var actualMinutes = lessons.filter(function(ev){
-    return ev.learnerId===lid && ev.date;
+    return ev.learnerId===lid && ev.date && (ev.type||'lesson')==='lesson';
   }).reduce(function(sum, ev){
     return sum + (Number(ev.duration||0)||0);
   }, 0);
@@ -857,6 +857,11 @@ function renderSheet(){
     function lastScoreForPart(pid){
       for(var i=datesAsc.length-1;i>=0;i--){
         var d = datesAsc[i];
+        // Proefles is alleen een visuele kolom en telt nooit mee voor modulevoortgang.
+        var isTrial = lessons.some(function(ev){
+          return ev.learnerId===lid && ev.date===d && ev.type==='trial';
+        });
+        if(isTrial) continue;
         var v = scoreGet(lid, pid, d);
         if(v!==null && v!==undefined) return v;
       }
@@ -891,6 +896,11 @@ function renderSheet(){
         (ev.type==='exam' || ev.type==='ttt' || ev.type==='bnor' || ev.type==='fear');
     }) || null;
   }
+  function trialForDate(d){
+    return lessons.find(function(ev){
+      return ev.learnerId===lid && ev.date===d && ev.type==='trial';
+    }) || null;
+  }
   function examTypeClass(ev){
     if(!ev) return '';
     if(ev.type==='ttt') return ' ttt-assessment';
@@ -920,9 +930,10 @@ function renderSheet(){
     var d=datesDisplay[i]||'';
     var nr=d?lessonNumberForDate(d):'';
     var exam=d?examForDate(d):null;
-    var typeCls=exam?examTypeClass(exam):'';
-    var displayDate=portalDateNl(d); var label=d?(exam?('<div class="assessment-date">'+displayDate+'</div>'):('<div>Les '+nr+'<small>'+displayDate+'</small></div>')):('<div>—<small>&nbsp;</small></div>');
-    html+='<div class="col-header'+(exam?' exam-col-header':'')+typeCls+'" title="'+(exam?escapeHtml(examTypeTitle(exam)):'')+'">'+label+'</div>';
+    var trial=d?trialForDate(d):null;
+    var typeCls=exam?examTypeClass(exam):(trial?' trial-lesson':'');
+    var displayDate=portalDateNl(d); var label=d?(exam?('<div class="assessment-date">'+displayDate+'</div>'):(trial?('<div>Proefles<small>'+displayDate+'</small></div>'):('<div>Les '+nr+'<small>'+displayDate+'</small></div>'))):('<div>—<small>&nbsp;</small></div>');
+    html+='<div class="col-header'+(exam?' exam-col-header':'')+typeCls+'" title="'+(exam?escapeHtml(examTypeTitle(exam)):(trial?'Proefles':''))+'">'+label+'</div>';
   }
   html+='</div></div>';
 
@@ -942,11 +953,12 @@ function renderSheet(){
       for(i=0;i<51;i++){
         var date=datesDisplay[i]||'';
         var exam=date?examForDate(date):null;
-        var s=(date&&!exam)?scoreGet(lid,p.id,date):null;
-        var clickable=!!date && !exam && (historicalMode || i===0);
-        var scoreText=exam?'EX':(s!==null?s:'');
-        var typeClsCell=exam?examTypeClass(exam):'';
-        html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+typeClsCell+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score'+typeClsCell+' ':((s?cellClass(s):'')))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?escapeHtml(examTypeTitle(exam))+' – geen scores invoeren':'')+'">'+scoreText+'</div></div>';
+        var trial=date?trialForDate(date):null;
+        var s=(date&&!exam&&!trial)?scoreGet(lid,p.id,date):null;
+        var clickable=!!date && !exam && !trial && (historicalMode || i===0);
+        var scoreText=exam?'EX':(trial?'':(s!==null?s:''));
+        var typeClsCell=exam?examTypeClass(exam):(trial?' trial-lesson':'');
+        html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+(trial?' trial-sheet-cell':'')+typeClsCell+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score'+typeClsCell+' ':(trial?'trial-score ':((s?cellClass(s):''))))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?escapeHtml(examTypeTitle(exam))+' – geen scores invoeren':(trial?'Proefles – telt niet mee voor voortgang':''))+'">'+scoreText+'</div></div>';
       }
     });
   });

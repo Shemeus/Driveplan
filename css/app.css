@@ -542,3 +542,10 @@ body.modal-open{overflow:hidden;touch-action:none}
 @media(max-width:700px){.upcoming-assessment-row{grid-template-columns:100px 1fr}}
 
 .upcoming-assessments.standalone{margin:0;padding:0;border:0;border-radius:0;background:transparent}
+
+/* Proefles op de leskaart: duidelijk groen, net als in de agenda. */
+.col-header.trial-lesson{background:#dff8e6!important;border-color:#bde9ca!important;color:#166534!important}
+
+/* Proefles op leskaart: volledige kolom groen, zonder score en zonder invloed op voortgang. */
+.sheet-cell.trial-sheet-cell{background:transparent!important}
+.score.trial-score{background:#8fdda5!important;border-color:#69c681!important;box-shadow:none!important}
