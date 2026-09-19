@@ -1230,6 +1230,7 @@ function modImportJson(file){
 /* ===== Tabs ===== */
 var views={
   agenda:$('#view-agenda'),
+  assessments:$('#view-assessments'),
   learners:$('#view-learners'),
   sheet:$('#view-sheet'),
   invoices:$('#view-invoices'),
@@ -1256,6 +1257,9 @@ function switchTab(name, options){
   }
 
   if(name==='agenda') renderWeek();
+  if(name==='assessments' && typeof renderUpcomingAssessments==='function'){
+    renderUpcomingAssessments();
+  }
   if(name==='learners') renderLearners();
   if(name==='sheet') renderSheet();
   if(name==='invoices') renderInvoices();

@@ -16,7 +16,7 @@ function learnerConsumedPackageLessons(lid, pkg){
   var baseMinutes = Number(pkg.lessonMinutes||60) || 60;
   var today = isoToday();
   var totalMinutes = lessons.filter(function(ev){
-    return ev.learnerId===lid && ev.type==='lesson' && ev.date && ev.date<=today;
+    return ev.learnerId===lid && (ev.type||'lesson')==='lesson' && ev.date && ev.date<=today;
   }).reduce(function(sum, ev){
     return sum + (Number(ev.duration||0)||0);
   }, 0);
@@ -350,11 +350,11 @@ async function saveLearner(){
   if(editLearnerId){
   var i=learners.findIndex(function(x){return x.id===editLearnerId});
   if(i>=0){
-    learners[i]={id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note};
+    var prev=learners[i]||{}; learners[i]=Object.assign({},prev,{id:editLearnerId,name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note,status:prev.status||'active'});
   }
   toast('Bijgewerkt');
 }else{
-  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note});
+  learners.push({id:uid(),name:name,phone:phone,email:email,address:address,address2:address2,address3:address3,zip:zip,avgMinutes:normalizeDuration(avg),relationNumber:relationNumber,source:source,packageId:packageId,note:note,status:'active'});
   toast('Toegevoegd');
 }
 
@@ -409,12 +409,46 @@ async function deleteLearner(id){
   renderSheet();
   toast('Leerling verwijderd');
 }
+var learnerStatusView='active';
+function learnerStatusLabel(status){ return status==='hold'?'On hold':(status==='archive'?'Archief':'Actief'); }
+function setLearnerStatusView(status){
+  learnerStatusView=status||'active';
+  Array.prototype.slice.call(document.querySelectorAll('.learner-status-btn')).forEach(function(b){
+    var on=b.getAttribute('data-status')===learnerStatusView;
+    b.classList.toggle('btn-primary',on); b.classList.toggle('btn-ghost',!on);
+  });
+  renderLearners();
+}
+function setLearnerStatus(id,status){
+  var l=learners.find(function(x){return x.id===id;}); if(!l) return;
+  if(status==='archive'){
+    var reason=prompt('Waarom archiveren? Typ: geslaagd of gestopt', l.archiveReason||'geslaagd');
+    if(reason===null) return;
+    reason=String(reason||'').trim().toLowerCase();
+    l.archiveReason=reason||'gestopt';
+    if(reason==='geslaagd'){
+      var attempts=prompt('Bij welke poging geslaagd? (bijv. 1, 2, 3, 4)', l.passedAttempt||'1'); if(attempts===null) return;
+      var location=prompt('Examenlocatie (bijv. Hoorn, Zaandam of Alkmaar)', l.examLocation||'Hoorn'); if(location===null) return;
+      var date=prompt('Datum geslaagd (dd-mm-jjjj)', l.passedDate||portalDateNl(isoToday())); if(date===null) return;
+      l.passedAttempt=String(attempts||'').trim(); l.examLocation=String(location||'').trim(); l.passedDate=String(date||'').trim();
+    }
+  }
+  l.status=status;
+  store.write(K.learners,learners);
+  if(typeof saveAppStateToCloud==='function') saveAppStateToCloud().catch(function(e){console.warn(e);});
+  rebuildLearnerOptions(); renderLearners(); renderWeek(); renderSheet();
+  toast(status==='active'?'Leerling teruggezet naar Actief':(status==='hold'?'Leerling op On hold gezet':'Leerling gearchiveerd'));
+}
+Array.prototype.slice.call(document.querySelectorAll('.learner-status-btn')).forEach(function(b){
+  b.addEventListener('click',function(){setLearnerStatusView(b.getAttribute('data-status'));});
+});
+
 /* renderLearners */
 function renderLearners(){
   var list=$('#learnerList');
   var q = ($('#learnerSearch') && $('#learnerSearch').value ? $('#learnerSearch').value.trim().toLowerCase() : '');
 
-  var arr = learners.slice().sort(function(a,b){
+  var arr = learners.filter(function(l){return (l.status||'active')===learnerStatusView;}).sort(function(a,b){
     return (a.name||'').localeCompare((b.name||''), 'nl');
   });
 
@@ -465,12 +499,14 @@ function renderLearners(){
           (l.relationNumber?'<div class="small" style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">CBR relatienummer: <b>'+escapeHtml(l.relationNumber)+'</b> <button class="btn btn-ghost" data-action="copyrelation" type="button">Kopieer</button></div>':'')+
           packageLine+
           (l.note?'<div class="small" style="margin-top:6px">'+escapeHtml(l.note)+'</div>':'')+
+          (learnerStatusView==='archive' ? '<div class="archive-meta">'+(l.archiveReason==='geslaagd'?'✅ Geslaagd'+(l.passedAttempt?' • '+escapeHtml(l.passedAttempt)+'e poging':'')+(l.examLocation?' • '+escapeHtml(l.examLocation):'')+(l.passedDate?' • '+escapeHtml(l.passedDate):''):'📁 '+escapeHtml(l.archiveReason||'Gearchiveerd'))+'</div>' : '')+
           ((l.email||'').trim() ? '<div class="portal-avail-box" data-portal-availability="'+escapeHtml(String(l.id))+'"><div class="portal-avail-title">🕒 Beschikbaarheidsvoorkeuren</div><div class="small portal-avail-content">Laden…</div></div>' : '')+
         '</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
           ((l.email||'').trim() ? '<button class="btn btn-ghost" data-action="portalinvite">🚘 DrivePortal uitnodigen</button><button class="btn btn-ghost" data-action="portalcopy">Link kopiëren</button>' : '')+
           '<button class="btn btn-ghost" data-action="sheet">Leskaart</button>'+
           '<button class="btn btn-ghost" data-action="edit">Bewerken</button>'+
+          (learnerStatusView==='active' ? '<button class="btn btn-ghost" data-action="hold">On hold</button><button class="btn btn-ghost" data-action="archive">Archiveren</button>' : '<button class="btn btn-primary" data-action="activate">Terug naar Actief</button>'+(learnerStatusView==='hold'?'<button class="btn btn-ghost" data-action="archive">Archiveren</button>':''))+
           '<button class="btn btn-danger" data-action="delete">Verwijderen</button>'+
         '</div>'+
       '</div>';
@@ -602,6 +638,12 @@ $('#learnerList').addEventListener('click', function(e){
     }else if(action==='edit'){
       var l=learners.find(function(x){return x.id===id});
       if(l) openLearnerModal(l);
+    }else if(action==='hold'){
+      setLearnerStatus(id,'hold');
+    }else if(action==='archive'){
+      setLearnerStatus(id,'archive');
+    }else if(action==='activate'){
+      setLearnerStatus(id,'active');
     }else if(action==='delete'){
       deleteLearner(id);
     }else if(action==='invoices'){
@@ -733,7 +775,9 @@ function openScoreModal(ctx){
 
   scoreFillLessonBtn.onclick=function(){
     if(!chosenScore){ alert('Kies eerst een score (1–8).'); return; }
-    var pids = allPartsFlat().map(function(p,pi){return p.id;});
+    var pids = (curriculum.modules||[]).slice(0,3).reduce(function(arr,mod){
+      return arr.concat((mod.parts||[]).map(function(p){return p.id;}));
+    },[]);
     applyScoreToPidList(ctx.lid, ctx.date, pids, chosenScore);
   };
 
@@ -839,7 +883,24 @@ function renderSheet(){
   var datesWindow=datesAsc.slice(-51);
   var datesDisplay=datesWindow.slice().reverse();
   function examForDate(d){
-    return lessons.find(function(ev){return ev.learnerId===lid && ev.date===d && ev.type==='exam';}) || null;
+    return lessons.find(function(ev){
+      return ev.learnerId===lid && ev.date===d &&
+        (ev.type==='exam' || ev.type==='ttt' || ev.type==='bnor' || ev.type==='fear');
+    }) || null;
+  }
+  function examTypeClass(ev){
+    if(!ev) return '';
+    if(ev.type==='ttt') return ' ttt-assessment';
+    if(ev.type==='bnor') return ' bnor-assessment';
+    if(ev.type==='fear') return ' fear-assessment';
+    return ' exam-assessment';
+  }
+  function examTypeTitle(ev){
+    if(!ev) return '';
+    if(ev.type==='ttt') return 'Tussentijdse toets';
+    if(ev.type==='bnor') return 'BNOR examen';
+    if(ev.type==='fear') return 'Faalangstexamen';
+    return 'Praktijkexamen';
   }
 
   function lessonNumberForDate(d){
@@ -856,8 +917,9 @@ function renderSheet(){
     var d=datesDisplay[i]||'';
     var nr=d?lessonNumberForDate(d):'';
     var exam=d?examForDate(d):null;
-    var label=d?(exam?('<div class="exam-head">EXAMEN<small>'+d+'</small></div>'):('<div>Les '+nr+'<small>'+d+'</small></div>')):('<div>—<small>&nbsp;</small></div>');
-    html+='<div class="col-header'+(exam?' exam-col-header':'')+'">'+label+'</div>';
+    var typeCls=exam?examTypeClass(exam):'';
+    var displayDate=portalDateNl(d); var label=d?(exam?('<div class="assessment-date">'+displayDate+'</div>'):('<div>Les '+nr+'<small>'+displayDate+'</small></div>')):('<div>—<small>&nbsp;</small></div>');
+    html+='<div class="col-header'+(exam?' exam-col-header':'')+typeCls+'" title="'+(exam?escapeHtml(examTypeTitle(exam)):'')+'">'+label+'</div>';
   }
   html+='</div></div>';
 
@@ -880,7 +942,8 @@ function renderSheet(){
         var s=(date&&!exam)?scoreGet(lid,p.id,date):null;
         var clickable=!!date && !exam && (historicalMode || i===0);
         var scoreText=exam?'EX':(s!==null?s:'');
-        html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score ':((s?cellClass(s):'')))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?'Praktijkexamen – geen scores invoeren':'')+'">'+scoreText+'</div></div>';
+        var typeClsCell=exam?examTypeClass(exam):'';
+        html+='<div class="sheet-cell module-cell'+(exam?' exam-sheet-cell':'')+typeClsCell+'" data-mod-id="'+escapeHtml(mid)+'"><div class="score '+(exam?'exam-score'+typeClsCell+' ':((s?cellClass(s):'')))+(clickable?' clickable':' locked')+'" data-date="'+date+'" data-part="'+p.id+'" data-display="'+escapeHtml(disp)+'" '+(clickable?'':'data-locked="1"')+' title="'+(exam?escapeHtml(examTypeTitle(exam))+' – geen scores invoeren':'')+'">'+scoreText+'</div></div>';
       }
     });
   });

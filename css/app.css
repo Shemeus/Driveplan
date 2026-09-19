@@ -510,3 +510,35 @@ body.modal-open{overflow:hidden;touch-action:none}
 .exam-head{font-weight:900;color:#a61b1b}.exam-head small{display:block;color:#a85b5b!important}
 .exam-sheet-cell{background:#fff5f5!important}
 .exam-score{background:#d92d20!important;color:#fff!important;font-size:10px!important;font-weight:900!important;cursor:not-allowed!important}
+
+/* v26: toets/examenkleuren op leskaart */
+.assessment-date{font-weight:900;font-size:12px;line-height:1.2}
+.exam-col-header.ttt-assessment{background:#f1e7ff!important;color:#6b21a8!important}
+.exam-col-header.bnor-assessment{background:#ead7c4!important;color:#70421f!important}
+.exam-col-header.fear-assessment{background:#fff1a8!important;color:#725a00!important}
+.exam-sheet-cell.ttt-assessment{background:#faf5ff!important}
+.exam-sheet-cell.bnor-assessment{background:#fbf4ed!important}
+.exam-sheet-cell.fear-assessment{background:#fffbea!important}
+.exam-score.ttt-assessment{background:#9333ea!important;color:#fff!important}
+.exam-score.bnor-assessment{background:#8b5e3c!important;color:#fff!important}
+.exam-score.fear-assessment{background:#c49a00!important;color:#fff!important}
+
+/* v27: examensoverzicht + leerlingstatus */
+.assessment-overview-card #upcomingAssessments{display:flex;flex-direction:column;gap:8px}
+.assessment-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #d9e1e8;border-left:6px solid #ef4444;border-radius:12px;background:#fff}
+.assessment-row.ttt{border-left-color:#9333ea}.assessment-row.bnor{border-left-color:#8b5e3c}.assessment-row.fear{border-left-color:#c49a00}
+.assessment-datebox{min-width:105px;display:flex;flex-direction:column}.assessment-datebox span,.assessment-main span{font-size:12px;color:#64748b}.assessment-main{flex:1;display:flex;flex-direction:column}
+.archive-meta{margin-top:7px;padding:6px 9px;border-radius:8px;background:#f1f5f9;font-size:12px;font-weight:700}
+@media(max-width:700px){.assessment-row{align-items:flex-start;flex-wrap:wrap}.assessment-main{min-width:140px}.assessment-edit{margin-left:auto}}
+
+.upcoming-assessments{margin:14px 0 18px;padding:14px;border:1px solid #dfe5ec;border-radius:12px;background:#fff}
+.upcoming-assessments-title{font-size:17px;font-weight:900;margin-bottom:10px}
+.upcoming-assessment-row{display:grid;grid-template-columns:110px minmax(130px,1fr) 150px 65px;gap:10px;align-items:center;padding:9px 10px;margin:6px 0;border-radius:9px;border-left:6px solid #e55;background:#fafafa}
+.upcoming-assessment-row.ttt{border-left-color:#9333ea;background:#faf5ff}
+.upcoming-assessment-row.bnor{border-left-color:#8b5e3c;background:#fbf4ed}
+.upcoming-assessment-row.fear{border-left-color:#c49a00;background:#fffbea}
+.upcoming-assessment-date,.upcoming-assessment-name,.upcoming-assessment-time{font-weight:800}
+.upcoming-assessments-empty{color:#667085;padding:6px 0}
+@media(max-width:700px){.upcoming-assessment-row{grid-template-columns:100px 1fr}}
+
+.upcoming-assessments.standalone{margin:0;padding:0;border:0;border-radius:0;background:transparent}

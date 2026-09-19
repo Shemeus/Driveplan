@@ -304,6 +304,46 @@ async function loadWhoCanHereResults(){
   }
 }
 
+function assessmentTypeLabel(ev){
+  if(ev.type==='ttt') return 'TTT';
+  if(ev.type==='bnor') return 'BNOR examen';
+  if(ev.type==='fear') return 'Faalangstexamen';
+  return 'Praktijkexamen';
+}
+function assessmentTypeClass(ev){
+  if(ev.type==='ttt') return 'ttt';
+  if(ev.type==='bnor') return 'bnor';
+  if(ev.type==='fear') return 'fear';
+  return 'exam';
+}
+function nlDateFull(iso){
+  var p=String(iso||'').split('-');
+  return p.length===3 ? p[2]+'-'+p[1]+'-'+p[0] : String(iso||'');
+}
+function renderUpcomingAssessments(){
+  var box=document.getElementById('upcomingAssessments');
+  if(!box) return;
+  var today=isoToday();
+  var arr=lessons.filter(function(ev){
+    return ev.date>=today && (ev.type==='exam'||ev.type==='ttt'||ev.type==='bnor'||ev.type==='fear');
+  }).sort(function(a,b){
+    return (a.date+' '+(a.time||'')).localeCompare(b.date+' '+(b.time||''));
+  });
+  if(!arr.length){ box.innerHTML='<div class="small">Geen geplande examens of toetsen.</div>'; return; }
+  box.innerHTML=arr.map(function(ev){
+    var l=learners.find(function(x){return x.id===ev.learnerId;})||{};
+    var cls=assessmentTypeClass(ev);
+    return '<div class="assessment-row '+cls+'" data-event-id="'+escapeHtml(String(ev.id||''))+'">'+
+      '<div class="assessment-datebox"><b>'+escapeHtml(nlDateFull(ev.date))+'</b><span>'+escapeHtml(ev.time||'')+'</span></div>'+
+      '<div class="assessment-main"><b>'+escapeHtml(l.name||'Onbekende leerling')+'</b><span>'+escapeHtml(assessmentTypeLabel(ev))+'</span></div>'+
+      '<button class="btn btn-ghost assessment-edit" type="button">Openen</button></div>';
+  }).join('');
+  Array.prototype.slice.call(box.querySelectorAll('.assessment-row')).forEach(function(row){
+    var btn=row.querySelector('.assessment-edit');
+    if(btn) btn.addEventListener('click',function(){openLessonModal(row.getAttribute('data-event-id'));});
+  });
+}
+
 function renderWeek(){
   var todayISO = isoToday();
   var days=[0,1,2,3,4,5,6].map(function(i){return addDays(weekStart,i)});
@@ -401,6 +441,7 @@ function renderWeek(){
   $('#weekLabel').textContent='Week '+pad2(isoWeekNumber(days[0]))+' • '+fmtHead(days[0])+' – '+fmtHead(days[6])+' • '+inWeek.length+' afspraken • '+hours.toLocaleString('nl-NL')+' uur';
 
   renderTodayTomorrow();
+  renderUpcomingAssessments();
 }
 
 /* ===== Les modal ===== */
@@ -413,7 +454,7 @@ var editLessonId=null;
 function filterLessonLearners(query){
   query = (query||'').trim().toLowerCase();
   var cur = nlLearner && nlLearner.value ? nlLearner.value : '';
-  var arr = learners.slice().sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'nl');});
+  var arr = learners.filter(function(l){return (l.status||'active')==='active';}).sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'nl');});
 
   if(query){
     var pref = arr.filter(function(l){return (l.name||'').toLowerCase().indexOf(query)===0;});

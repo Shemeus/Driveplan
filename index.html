@@ -23,6 +23,7 @@
 <div class="brand brand-app" id="brandBox"><button class="btn btn-ghost mobile-menu-btn" id="sidebarMobileMenuBtn" type="button" onclick="return dpMobileMenuClose(event)">☰</button><img alt="Logo" id="brandLogo" style="display:none"/><div class="brand-meta"><span id="brandName">DrivePlan</span><span class="brand-tag" id="brandTagline">rijschool planner</span></div></div>
 <nav class="nav">
 <button class="tab-btn active" data-tab="agenda" onclick="return dpMobileGo('agenda', event)">📅 Agenda</button>
+<button class="tab-btn" data-tab="assessments" onclick="return dpMobileGo('assessments', event)">📝 Geplande examens &amp; toetsen</button>
 <button class="tab-btn" data-tab="learners" onclick="return dpMobileGo('learners', event)">🧍 Leerlingen</button>
 <button class="tab-btn" data-tab="sheet" onclick="return dpMobileGo('sheet', event)">🧾 Leskaart</button>
 <button class="tab-btn" data-tab="modules" onclick="return dpMobileGo('modules', event)">⚙️ Modulebeheer</button>
@@ -116,8 +117,16 @@
 </div>
 <div class="small" style="margin-top:6px">Rijles = blauw • Praktijkexamen = rood • TTT = paars • BNOR = bruin • Faalangst = donker geel • Proefles = groen • Privé = donker oranje. Klik op een blok om te bewerken.</div>
 </div>
+
 </section>
 <!-- LEERLINGEN -->
+<section id="view-assessments" style="display:none">
+<div class="card">
+<div class="card-title">Geplande examens &amp; toetsen</div>
+<div class="small" style="margin-bottom:12px">Alle toekomstige praktijkexamens, TTT's, BNOR- en faalangstexamens op datum.</div>
+<div id="upcomingAssessments" class="upcoming-assessments standalone"></div>
+</div>
+</section>
 <section id="view-learners" style="display:none">
 <div class="card">
 <div class="toolbar" style="justify-content:space-between">
@@ -133,7 +142,12 @@
 </div>
 <div style="margin-top:10px">
 <input autocomplete="off" class="input" id="learnerSearch" placeholder="Zoek leerling...">
-<div class="small" style="margin-top:6px">Tik op een leerling → direct naar leskaart. Gebruik “Bewerken” rechts om gegevens te wijzigen.</div>
+<div class="learner-status-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+  <button class="btn btn-primary learner-status-btn" data-status="active" type="button">Actief</button>
+  <button class="btn btn-ghost learner-status-btn" data-status="hold" type="button">On hold</button>
+  <button class="btn btn-ghost learner-status-btn" data-status="archive" type="button">Archief</button>
+</div>
+<div class="small" style="margin-top:6px">Actief = huidige leerlingen. On hold en Archief blijven volledig bewaard en kunnen altijd terug naar Actief.</div>
 </input></div>
 <div class="list" id="learnerList" style="margin-top:10px"></div>
 </div>

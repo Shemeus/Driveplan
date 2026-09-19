@@ -986,6 +986,7 @@ company = normalizeCompanyState(company);
 
 learners = (learners||[]).map(function(l){
   if(!l.source) l.source = 'own';
+  if(!l.status) l.status = 'active';
   return l;
 });
 store.write(K.learners, learners);
