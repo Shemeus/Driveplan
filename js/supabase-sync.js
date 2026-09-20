@@ -162,34 +162,30 @@
     var sid = student.id;
 
     var mods = (curriculum && Array.isArray(curriculum.modules)) ? curriculum.modules : [];
-    var learnerDatesAsc = (typeof datesAscForLearner==='function') ? datesAscForLearner(learner.id) : [];
+    var trialDates={};
+    (Array.isArray(lessons)?lessons:[]).forEach(function(ev){
+      if(String(ev.learnerId)===String(learner.id) && ev.date && ev.type==='trial') trialDates[ev.date]=true;
+    });
     function exactModuleProgress(mod){
       var parts=Array.isArray(mod.parts)?mod.parts:[];
       var done=0;
       parts.forEach(function(part){
-        for(var di=learnerDatesAsc.length-1;di>=0;di--){
-          var d=learnerDatesAsc[di];
-          var isTrial=(Array.isArray(lessons)?lessons:[]).some(function(ev){
-            return String(ev.learnerId)===String(learner.id) && ev.date===d && ev.type==='trial';
-          });
-          if(isTrial) continue;
-          var v=(progress && progress[learner.id] && progress[learner.id][part.id] && (d in progress[learner.id][part.id])) ? progress[learner.id][part.id][d] : null;
-          if(v!==null && v!==undefined){ done++; break; }
-        }
+        var byPart=progress && progress[learner.id] && progress[learner.id][part.id] ? progress[learner.id][part.id] : null;
+        if(!byPart || typeof byPart!=='object') return;
+        if(Object.keys(byPart).some(function(d){
+          var v=byPart[d];
+          return !trialDates[d] && v!==null && v!==undefined && v!=='';
+        })) done++;
       });
-      return {done:done,total:parts.length,pct:parts.length?Math.round((done/parts.length)*100):0};
+      return {done:done,total:parts.length,pct:parts.length?Math.round(done/parts.length*100):0};
     }
     var modRows = mods.map(function(m,mi){
       var ep=exactModuleProgress(m);
       return {
-        student_id:sid,
-        module_key:String(m.id),
+        student_id:sid,module_key:String(m.id),
         module_name:String(m.label || ('Module '+(mi+1))),
-        sort_order:mi,
-        active:true,
-        progress_percent:ep.pct,
-        progress_done:ep.done,
-        progress_total:ep.total
+        sort_order:mi,active:true,
+        progress_percent:ep.pct,progress_done:ep.done,progress_total:ep.total
       };
     });
     if(modRows.length){
@@ -289,7 +285,30 @@
       await portalJson('portal_score_history', {method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(historyRows)});
     }
 
-    // Afspraken: DrivePlan is leidend. Historie + toekomst naar het portaal.
+    // Volledige leskaarttijdlijn: DrivePlan is altijd leidend.
+    await portalJson('portal_lesson_history?student_id=eq.'+encodeURIComponent(sid), {method:'DELETE'});
+    var timelineEvents=(Array.isArray(lessons)?lessons:[]).filter(function(ev){
+      return String(ev.learnerId)===String(learner.id) && ev.date &&
+        ['lesson','trial','ttt','exam','bnor','fear'].indexOf(ev.type||'lesson')!==-1;
+    }).sort(function(a,b){
+      return String(a.date||'').localeCompare(String(b.date||'')) ||
+             String(a.time||'').localeCompare(String(b.time||''));
+    });
+    var timelineRows=timelineEvents.map(function(ev,idx){
+      return {
+        student_id:sid,
+        event_key:String(ev.id || (ev.date+'|'+(ev.time||'')+'|'+(ev.type||'lesson')+'|'+idx)),
+        event_date:ev.date,event_time:String(ev.time||''),
+        event_type:String(ev.type||'lesson'),
+        duration_minutes:Number(ev.duration||0)||0,
+        title:portalLessonTitle(ev),sort_order:idx
+      };
+    });
+    if(timelineRows.length){
+      await portalJson('portal_lesson_history',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(timelineRows)});
+    }
+
+    // Gewone afspraken blijven voor het afsprakenoverzicht.
     await portalJson('portal_appointments?student_id=eq.'+encodeURIComponent(sid), {method:'DELETE'});
     var apptRows = (Array.isArray(lessons)?lessons:[]).filter(function(ev){
       if(String(ev.learnerId)!==String(learner.id)) return false;
