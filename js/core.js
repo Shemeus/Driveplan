@@ -172,7 +172,7 @@ function applyBranding(){
   var heroSub = $('#heroSubtitle');
   var taglineEl = $('#brandTagline');
   var brandName = currentBrandName();
-  var brandTagline = (company && company.tagline) ? company.tagline : (brandName==='DrivePlan' ? 'Jouw planning, leerlingen en leskaart op één plek' : 'Persoonlijke rijschool planner voor in de auto');
+  var brandTagline = (company && company.tagline) ? company.tagline : (brandName==='DrivePlan' ? '' : 'Persoonlijke rijschool planner voor in de auto');
   if(nameEl) nameEl.textContent = brandName;
   if(taglineEl) taglineEl.textContent = brandTagline;
   if(heroTitle) heroTitle.textContent = brandName;
@@ -937,7 +937,7 @@ function moduleClassByIndex(i){
 function defaultCompanyState(){
   return {
     name:'DrivePlan',
-    tagline:'Jouw planning, leerlingen en leskaart op één plek',
+    tagline:'',
     logo:'',
     color:'#004080',
     phone:'',
