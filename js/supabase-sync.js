@@ -162,13 +162,34 @@
     var sid = student.id;
 
     var mods = (curriculum && Array.isArray(curriculum.modules)) ? curriculum.modules : [];
+    var learnerDatesAsc = (typeof datesAscForLearner==='function') ? datesAscForLearner(learner.id) : [];
+    function exactModuleProgress(mod){
+      var parts=Array.isArray(mod.parts)?mod.parts:[];
+      var done=0;
+      parts.forEach(function(part){
+        for(var di=learnerDatesAsc.length-1;di>=0;di--){
+          var d=learnerDatesAsc[di];
+          var isTrial=(Array.isArray(lessons)?lessons:[]).some(function(ev){
+            return String(ev.learnerId)===String(learner.id) && ev.date===d && ev.type==='trial';
+          });
+          if(isTrial) continue;
+          var v=(progress && progress[learner.id] && progress[learner.id][part.id] && (d in progress[learner.id][part.id])) ? progress[learner.id][part.id][d] : null;
+          if(v!==null && v!==undefined){ done++; break; }
+        }
+      });
+      return {done:done,total:parts.length,pct:parts.length?Math.round((done/parts.length)*100):0};
+    }
     var modRows = mods.map(function(m,mi){
+      var ep=exactModuleProgress(m);
       return {
         student_id:sid,
         module_key:String(m.id),
         module_name:String(m.label || ('Module '+(mi+1))),
         sort_order:mi,
-        active:true
+        active:true,
+        progress_percent:ep.pct,
+        progress_done:ep.done,
+        progress_total:ep.total
       };
     });
     if(modRows.length){

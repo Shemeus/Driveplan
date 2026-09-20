@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v36-portal-polish';
+const CACHE_NAME = 'driveplan-v37-portal-exact-sync';
 
 const urlsToCache = [
   './',
