@@ -94,7 +94,12 @@
     if(!byPart || typeof byPart !== 'object') return null;
     var dates = Object.keys(byPart).sort();
     for(var i=dates.length-1;i>=0;i--){
-      var v = byPart[dates[i]];
+      var scoreDate = dates[i];
+      var isTrial = (Array.isArray(lessons)?lessons:[]).some(function(ev){
+        return String(ev.learnerId)===String(lid) && ev.date===scoreDate && ev.type==='trial';
+      });
+      if(isTrial) continue;
+      var v = byPart[scoreDate];
       if(v!==null && v!==undefined && v!==''){
         var n = Number(v);
         return isNaN(n) ? null : n;
@@ -123,6 +128,8 @@
     if(ev && ev.type === 'ttt') return 'TTT';
     if(ev && ev.type === 'bnor') return 'BNOR examen';
     if(ev && ev.type === 'fear') return 'Faalangstexamen';
+    if(ev && ev.type === 'trial') return 'Proefles';
+    if(ev && ev.type === 'private') return 'Privé';
     return 'Rijles';
   }
 
@@ -219,22 +226,64 @@
       }
     }
 
-    // Afspraken: DrivePlan is leidend. Alleen vandaag en toekomst naar het portaal.
+    // Opleidingssamenvatting voor DrivePortal: gereden uren en eventueel pakket.
+    var pkg = learner.packageId && typeof findPackageById==='function' ? findPackageById(learner.packageId) : null;
+    var drivenMinutes = (Array.isArray(lessons)?lessons:[]).filter(function(ev){
+      return String(ev.learnerId)===String(learner.id) && ev.date && (ev.type||'lesson')==='lesson';
+    }).reduce(function(sum,ev){ return sum + (Number(ev.duration||0)||0); },0);
+    var totalPackageMinutes = pkg ? ((Number(pkg.lessonCount||0)||0) * (Number(pkg.lessonMinutes||60)||60)) : null;
+    await portalJson('portal_training_summary?on_conflict=student_id', {
+      method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({
+        student_id:sid,
+        package_name:pkg ? String(pkg.name||'Pakket') : null,
+        package_minutes:totalPackageMinutes,
+        driven_minutes:drivenMinutes,
+        updated_at:new Date().toISOString()
+      })
+    });
+
+    // Volledige scorehistorie voor de alleen-lezen leskaart in DrivePortal.
+    await portalJson('portal_score_history?student_id=eq.'+encodeURIComponent(sid), {method:'DELETE'});
+    var historyRows=[];
+    for(var hmi=0; hmi<mods.length; hmi++){
+      var hmod=mods[hmi], hparts=Array.isArray(hmod.parts)?hmod.parts:[];
+      for(var hpi=0; hpi<hparts.length; hpi++){
+        var hpart=hparts[hpi];
+        var byPart = progress && progress[learner.id] && progress[learner.id][hpart.id] ? progress[learner.id][hpart.id] : null;
+        if(!byPart || typeof byPart!=='object') continue;
+        Object.keys(byPart).sort().forEach(function(scoreDate){
+          var isTrial=(Array.isArray(lessons)?lessons:[]).some(function(ev){
+            return String(ev.learnerId)===String(learner.id) && ev.date===scoreDate && ev.type==='trial';
+          });
+          if(isTrial) return;
+          var hv=byPart[scoreDate];
+          if(hv===null || hv===undefined || hv==='') return;
+          var hn=Number(hv); if(isNaN(hn)) return;
+          historyRows.push({student_id:sid,module_key:String(hmod.id),module_name:String(hmod.label||('Module '+(hmi+1))),module_sort:hmi,item_key:String(hpart.id),item_name:String(hpart.t||('Onderdeel '+(hpi+1))),item_sort:hpi,lesson_date:scoreDate,score:hn});
+        });
+      }
+    }
+    if(historyRows.length){
+      await portalJson('portal_score_history', {method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(historyRows)});
+    }
+
+    // Afspraken: DrivePlan is leidend. Historie + toekomst naar het portaal.
     await portalJson('portal_appointments?student_id=eq.'+encodeURIComponent(sid), {method:'DELETE'});
-    var today = new Date(); today.setHours(0,0,0,0);
     var apptRows = (Array.isArray(lessons)?lessons:[]).filter(function(ev){
       if(String(ev.learnerId)!==String(learner.id)) return false;
-      var st = lessonStartIso(ev); if(!st) return false;
-      return new Date(st) >= today;
+      return !!lessonStartIso(ev);
     }).map(function(ev){
       return {
         student_id:sid,
         driveplan_appointment_id:String(ev.id || ''),
         title:portalLessonTitle(ev),
+        appointment_type:String(ev.type||'lesson'),
+        duration_minutes:Number(ev.duration||0)||0,
         start_at:lessonStartIso(ev),
         end_at:lessonEndIso(ev),
         location:String(ev.pickup || ''),
-        status:'planned'
+        status:(new Date(lessonStartIso(ev)) < new Date() ? 'completed' : 'planned')
       };
     });
     if(apptRows.length){
