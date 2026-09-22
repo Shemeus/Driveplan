@@ -868,14 +868,23 @@ function renderSheet(){
       return null;
     }
 
+    // Afgesproken voortgangsschaal:
+    // niet behandeld=0%, 1=5%, 2=10%, 3=25%, 4=40%,
+    // 5=55%, 6=70%, 7=85%, 8=100%.
+    // Een module is dus pas 100% als ALLE onderdelen op 8 staan.
+    function scoreToProgress(v){
+      var map={1:5,2:10,3:25,4:40,5:55,6:70,7:85,8:100};
+      return Object.prototype.hasOwnProperty.call(map, v) ? map[v] : 0;
+    }
+
     var rowsHTML = '';
     (curriculum.modules||[]).forEach(function(mod, mi){
       var parts=(mod.parts||[]);
-      var done=0;
+      var sum=0;
       for(var j=0;j<parts.length;j++){
-        if(lastScoreForPart(parts[j].id)!==null) done++;
+        sum += scoreToProgress(lastScoreForPart(parts[j].id));
       }
-      var pct = parts.length ? Math.round((done/parts.length)*100) : 0;
+      var pct = parts.length ? Math.round(sum/parts.length) : 0;
       var title = (mod.label||('Module '+(mi+1)));
       rowsHTML += ''
         + '<div class="mp-row" title="'+escapeHtml(title)+'">'

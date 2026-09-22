@@ -88,6 +88,29 @@ function initDaylistsToggle(){
   syncDaylistsToggle();
 }
 
+
+/* ===== Weekagenda zoom ===== */
+var agendaZoomPct = 100;
+function applyAgendaZoom(){
+  var head=document.getElementById('weekHead');
+  var body=document.getElementById('weekBody');
+  var label=document.getElementById('agendaZoomLabel');
+  var z=Math.max(40,Math.min(140,Number(agendaZoomPct)||100));
+  agendaZoomPct=z;
+  if(head) head.style.zoom=(z/100);
+  if(body) body.style.zoom=(z/100);
+  if(label) label.textContent=z+'%';
+  try{ store.write('dp_agenda_zoom_pct',z); }catch(e){}
+}
+function initAgendaZoom(){
+  try{ agendaZoomPct=Number(store.read('dp_agenda_zoom_pct',100))||100; }catch(e){ agendaZoomPct=100; }
+  var out=document.getElementById('agendaZoomOut');
+  var inn=document.getElementById('agendaZoomIn');
+  if(out) out.addEventListener('click',function(e){e.preventDefault();agendaZoomPct=Math.max(40,agendaZoomPct-10);applyAgendaZoom();});
+  if(inn) inn.addEventListener('click',function(e){e.preventDefault();agendaZoomPct=Math.min(140,agendaZoomPct+10);applyAgendaZoom();});
+  applyAgendaZoom();
+}
+
 function renderTodayTomorrow(){
   var todayISO = isoToday();
   var tomorrowISO = isoFromDateLocal(addDays(new Date(), 1));
@@ -650,3 +673,4 @@ function deleteLesson(){
   saveAppStateToCloud();
   renderWeek(); renderSheet(); renderLearners(); closeLessonModal(); toast('Verwijderd');
 }
+document.addEventListener('DOMContentLoaded',initAgendaZoom);

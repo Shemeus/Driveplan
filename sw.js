@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v38-portal-correctie';
+const CACHE_NAME = 'driveplan-v39-progress-agenda-zoom';
 
 const urlsToCache = [
   './',

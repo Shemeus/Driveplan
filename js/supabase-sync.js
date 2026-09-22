@@ -168,16 +168,25 @@
     });
     function exactModuleProgress(mod){
       var parts=Array.isArray(mod.parts)?mod.parts:[];
-      var done=0;
+      var map={1:5,2:10,3:25,4:40,5:55,6:70,7:85,8:100};
+      var sum=0,done=0;
       parts.forEach(function(part){
         var byPart=progress && progress[learner.id] && progress[learner.id][part.id] ? progress[learner.id][part.id] : null;
         if(!byPart || typeof byPart!=='object') return;
-        if(Object.keys(byPart).some(function(d){
-          var v=byPart[d];
-          return !trialDates[d] && v!==null && v!==undefined && v!=='';
-        })) done++;
+        var dates=Object.keys(byPart).filter(function(d){ return !trialDates[d]; }).sort();
+        for(var i=dates.length-1;i>=0;i--){
+          var v=byPart[dates[i]];
+          if(v!==null && v!==undefined && v!==''){
+            v=Number(v);
+            if(Object.prototype.hasOwnProperty.call(map,v)){
+              sum+=map[v];
+              done++;
+            }
+            break;
+          }
+        }
       });
-      return {done:done,total:parts.length,pct:parts.length?Math.round(done/parts.length*100):0};
+      return {done:done,total:parts.length,pct:parts.length?Math.round(sum/parts.length):0};
     }
     var modRows = mods.map(function(m,mi){
       var ep=exactModuleProgress(m);
