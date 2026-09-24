@@ -12,7 +12,7 @@
 <meta content="DrivePlan" name="apple-mobile-web-app-title"/>
 <link href="./icons/icon-192.png" rel="apple-touch-icon"/>
 <link href="./icons/favicon-32.png" rel="icon" sizes="32x32" type="image/png"/>
-<link href="css/app.css" rel="stylesheet"/>
+<link href="css/app.css?v=40b" rel="stylesheet"/>
 
 </head>
 <body>
@@ -160,6 +160,7 @@
 <div style="display:flex;gap:8px;align-items:center">
 <h3 style="margin:0">Leskaart</h3>
 <select class="input" id="sheetLearner"></select>
+<div class="sheet-zoom-controls" aria-label="Leskaart zoom"><button class="btn btn-ghost sheet-zoom-btn" id="sheetZoomOut" type="button" title="Leskaart uitzoomen">−</button><span class="sheet-zoom-label" id="sheetZoomLabel">100%</span><button class="btn btn-ghost sheet-zoom-btn" id="sheetZoomIn" type="button" title="Leskaart inzoomen">+</button></div>
 </div>
 <label class="switch small">
 <input id="historicalToggle" type="checkbox"/>
@@ -882,10 +883,10 @@ Tot dan!" rows="7"></textarea>
 </div>
 <div class="toast" id="toast">Opgeslagen</div>
 </div>
-<script src="js/core.js"></script>
-<script src="js/agenda.js"></script>
-<script src="js/learners-sheet.js"></script>
-<script src="js/finance-modules-init.js"></script>
-<script src="js/supabase-sync.js"></script>
+<script src="js/core.js?v=40"></script>
+<script src="js/agenda.js?v=40"></script>
+<script src="js/learners-sheet.js?v=40b"></script>
+<script src="js/finance-modules-init.js?v=40"></script>
+<script src="js/supabase-sync.js?v=40"></script>
 </body>
 </html>

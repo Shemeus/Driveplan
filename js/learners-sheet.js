@@ -818,17 +818,53 @@ function applySheetModuleCollapseState(){
   });
 }
 
+/* ===== Leskaart zoom ===== */
+var sheetZoomPct = 100;
+function applySheetZoom(){
+  var wrap=$('#sheetWrap');
+  var label=$('#sheetZoomLabel');
+  var z=Math.max(50,Math.min(150,Number(sheetZoomPct)||100));
+  sheetZoomPct=z;
+  if(wrap) wrap.style.zoom=(z/100);
+  if(label) label.textContent=z+'%';
+  try{ localStorage.setItem('driveplan.sheetZoom.v1',String(z)); }catch(e){}
+}
+function initSheetZoom(){
+  try{ sheetZoomPct=Number(localStorage.getItem('driveplan.sheetZoom.v1'))||100; }catch(e){ sheetZoomPct=100; }
+  var out=$('#sheetZoomOut'), inn=$('#sheetZoomIn');
+  if(out && !out.dataset.bound){
+    out.dataset.bound='1';
+    out.addEventListener('click',function(e){ e.preventDefault(); sheetZoomPct=Math.max(50,sheetZoomPct-10); applySheetZoom(); });
+  }
+  if(inn && !inn.dataset.bound){
+    inn.dataset.bound='1';
+    inn.addEventListener('click',function(e){ e.preventDefault(); sheetZoomPct=Math.min(150,sheetZoomPct+10); applySheetZoom(); });
+  }
+  applySheetZoom();
+}
+
 /* ===== Render leskaart ===== */
 function renderSheet(){
   var keep=$('#sheetLearner').value;
-  var learnerOptions = learners.slice().sort(function(a,b){
+  // Normale leskaart-wissellijst: alleen actieve leerlingen.
+  // Als een on-hold/archiefleerling bewust vanuit Leerlingen is geopend,
+  // blijft alleen die huidige leerling extra zichtbaar om zijn leskaart te bekijken.
+  var currentId = selectedLearnerId || keep || '';
+  var currentLearner = learners.find(function(l){ return String(l.id)===String(currentId); });
+  var learnerOptions = learners.filter(function(l){
+    return (l.status||'active')==='active';
+  });
+  if(currentLearner && (currentLearner.status||'active')!=='active'){
+    learnerOptions.push(currentLearner);
+  }
+  learnerOptions.sort(function(a,b){
     return (a.name||'').localeCompare((b.name||''), 'nl');
   });
   $('#sheetLearner').innerHTML=learnerOptions.map(function(l){return '<option value="'+l.id+'">'+escapeHtml(l.name)+'</option>'}).join('');
 
-  if(selectedLearnerId && learners.some(function(l){return l.id===selectedLearnerId})) $('#sheetLearner').value=selectedLearnerId;
-  else if(learners.some(function(l){return l.id===keep})) $('#sheetLearner').value=keep;
-  else $('#sheetLearner').value=(learners[0]?learners[0].id:'');
+  if(selectedLearnerId && learnerOptions.some(function(l){return l.id===selectedLearnerId})) $('#sheetLearner').value=selectedLearnerId;
+  else if(learnerOptions.some(function(l){return l.id===keep})) $('#sheetLearner').value=keep;
+  else $('#sheetLearner').value=(learnerOptions[0]?learnerOptions[0].id:'');
 
   var lid=$('#sheetLearner').value;
   selectedLearnerId=lid;
@@ -996,6 +1032,7 @@ function renderSheet(){
 
   applySheetModuleCollapseState();
   $('#sheetWrap').scrollLeft=0;
+  initSheetZoom();
 }
 window.addEventListener('resize', applySheetModuleCollapseState);
 $('#sheetLearner').addEventListener('change', function(){

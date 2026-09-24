@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v39-progress-agenda-zoom';
+const CACHE_NAME = 'driveplan-v40b-leskaart-zoom-filter';
 
 const urlsToCache = [
   './',
@@ -17,7 +17,11 @@ const urlsToCache = [
 
 self.addEventListener('install', event => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(urlsToCache.map(url => cache.add(url).catch(() => null)))
+    )
+  );
 });
 
 self.addEventListener('activate', event => {
@@ -29,9 +33,21 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(() => caches.match('./index.html')));
-    return;
+  if (event.request.method !== 'GET') return;
+  const req = event.request;
+
+  // GitHub Pages must prefer the newly deployed files. Cache is only fallback.
+  if (req.mode === 'navigate' || new URL(req.url).origin === self.location.origin) {
+    event.respondWith(
+      fetch(req).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(req, copy)).catch(() => {});
+        return response;
+      }).catch(() =>
+        caches.match(req, {ignoreSearch:true}).then(cached =>
+          cached || (req.mode === 'navigate' ? caches.match('./index.html') : Response.error())
+        )
+      )
+    );
   }
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));
 });

@@ -559,3 +559,13 @@ body.modal-open{overflow:hidden;touch-action:none}
   .agenda-zoom-btn{min-width:34px;padding:7px 9px!important}
   .agenda-zoom-label{min-width:38px;font-size:11px}
 }
+
+/* v40b: leskaart zoom */
+.sheet-zoom-controls{display:inline-flex;align-items:center;gap:5px}
+.sheet-zoom-btn{min-width:38px;padding:7px 10px!important;font-size:18px!important;font-weight:900}
+.sheet-zoom-label{min-width:42px;text-align:center;font-size:12px;font-weight:900;color:#334155}
+@media(max-width:700px){
+  .sheet-zoom-controls{gap:3px}
+  .sheet-zoom-btn{min-width:34px;padding:7px 9px!important}
+  .sheet-zoom-label{min-width:38px;font-size:11px}
+}
