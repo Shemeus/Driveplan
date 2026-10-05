@@ -341,7 +341,10 @@ function assessmentTypeClass(ev){
 }
 function nlDateFull(iso){
   var p=String(iso||'').split('-');
-  return p.length===3 ? p[2]+'-'+p[1]+'-'+p[0] : String(iso||'');
+  if(p.length!==3) return String(iso||'');
+  var d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
+  var days=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  return days[d.getDay()]+' '+p[2]+'-'+p[1]+'-'+p[0];
 }
 function renderUpcomingAssessments(){
   var box=document.getElementById('upcomingAssessments');

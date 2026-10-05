@@ -1,4 +1,4 @@
-const CACHE_NAME = 'driveplan-v40b-leskaart-zoom-filter';
+const CACHE_NAME = 'driveplan-v40c-weekdag-examens';
 
 const urlsToCache = [
   './',
